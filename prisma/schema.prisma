@@ -68,7 +68,6 @@ model bts {
   @@ignore
 }
 
-/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model bts_locations {
   lon  Decimal? @db.Decimal(10, 7)
   lat  Decimal? @db.Decimal(10, 7)
@@ -108,7 +107,6 @@ model kpoferc {
   @@ignore
 }
 
-/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model miejscowosci {
   miejscowosc String?
   simc        String? @db.VarChar(7)
@@ -212,18 +210,17 @@ model miejscowosci_seo {
 }
 
 model miejscowosci_slug {
+  id          Int     @id @default(autoincrement())
   miejscowosc String?
   simc        String? @db.VarChar(7)
   slug        String?
   gmina       String?
   adresy      BigInt?
-  id          Int     @id @default(autoincrement())
 
   @@index([simc], map: "idx_slug_simc")
   @@index([miejscowosc], map: "idx_slug_miejscowosc")
 }
 
-/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model polska {
   teryt        String?
   miejscowosc  String?
@@ -300,7 +297,6 @@ model spatial_ref_sys {
   proj4text String? @db.VarChar(2048)
 }
 
-/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model ulice {
   miejscowosc String?
   ulica       String?
@@ -318,66 +314,153 @@ model SystemLog {
   details   Json?
 }
 
-// ========== ZASIĘG OPERATORA ==========
+// ========== CMS - OPERATORZY I OFERTY ==========
+
+model Operator {
+  id              Int      @id @default(autoincrement())
+  nazwa           String   @unique
+  slug            String   @unique
+  opis            String?  @db.Text
+  logo_url        String?
+  email_handlowca String?
+  
+  oferty          Oferta[]
+  leady           Lead[]
+  zasiegi         ZasiegOperatora[]
+  opinie          Opinia[]
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@map("operatorzy")
+}
+
+model Oferta {
+  id                    Int      @id @default(autoincrement())
+  nazwa                 String
+  custom_url            String?
+  opis                  String?  @db.Text
+  
+  abonament             Decimal  @db.Decimal(10, 2)
+  instalacja            Decimal? @db.Decimal(10, 2)
+  aktywacja             Decimal? @db.Decimal(10, 2)
+  
+  zobowiazanie_miesiace Int?
+  download_mbps         Int
+  upload_mbps           Int
+  technologia           String?
+  
+  kategoria             String
+  
+  wyrozoniona           Boolean  @default(false)
+  lokalna               Boolean  @default(false)
+  oferta_specjalna      Boolean  @default(false)
+  dom_blok_info         Boolean  @default(false)
+  dom_blok_tekst        String?  @db.Text
+  
+  operator_id           Int
+  operator              Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+  
+  urzadzenia            UrządzenieKoncowe[]
+  lokalizacje           OfertaLokalizacja[]
+  programy_tv           ProgramTV[]
+  opinie                Opinia[]
+  
+  aktywna               Boolean  @default(true)
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@map("oferty")
+}
+
+model UrządzenieKoncowe {
+  id          Int      @id @default(autoincrement())
+  oferta_id   Int
+  oferta      Oferta   @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
+  
+  typ         String
+  nazwa       String
+  opis        String?  @db.Text
+  zdjecie_url String?
+  
+  created_at  DateTime @default(now())
+
+  @@map("urzadzenia_koncowe")
+}
+
+model OfertaLokalizacja {
+  id          Int      @id @default(autoincrement())
+  oferta_id   Int
+  oferta      Oferta   @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
+  
+  typ         String
+  kod         String
+  nazwa       String
+  
+  created_at  DateTime @default(now())
+
+  @@map("oferty_lokalizacje")
+}
+
+model ProgramTV {
+  id          Int      @id @default(autoincrement())
+  oferta_id   Int
+  oferta      Oferta   @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
+  
+  nazwa       String
+  kategoria   String?
+  logo_url    String?
+  pozycja     Int      @default(0)
+  
+  created_at  DateTime @default(now())
+
+  @@map("programy_tv")
+}
+
 model ZasiegOperatora {
   id          Int      @id @default(autoincrement())
   operator_id Int
   operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
   
-  // Adres z tabeli polska
-  teryt       String   // klucz główny
+  teryt       String
   miejscowosc String
   simc        String?
   ulica       String?
   id_ulicy    String?
   nr          String?
   
-  // Typ zasięgu
-  typ         String   // "cale_miasto", "konkretna_ulica", "konkretny_adres"
+  typ         String
   
-  // Dostępność
   aktywny     Boolean  @default(true)
   notatka     String?  @db.Text
   
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  @@unique([operator_id, teryt])  // jeden operator nie może mieć duplikatu tego samego adresu
+  @@unique([operator_id, teryt])
   @@index([operator_id])
   @@index([simc])
   @@map("zasiegi_operatorow")
 }
 
-// Dodaj relację w modelu Operator:
-model Operator {
-  // ... istniejące pola ...
-  zasiegi     ZasiegOperatora[]
-  opinie      Opinia[]
-}
-
-// ========== OPINIE ==========
 model Opinia {
   id            Int      @id @default(autoincrement())
   
-  // Relacje
   operator_id   Int?
   operator      Operator? @relation(fields: [operator_id], references: [id], onDelete: Cascade)
   
   oferta_id     Int?
   oferta        Oferta?   @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
   
-  // Dane opinii
   autor         String
   email         String?
-  ocena         Int      // 1-5 gwiazdek
+  ocena         Int
   tytul         String?
   tresc         String   @db.Text
   
-  // Moderacja
-  widoczna      Boolean  @default(false)  // domyślnie ukryta do moderacji
-  zatwierdzil   String?  // kto zatwierdził
+  widoczna      Boolean  @default(false)
+  zatwierdzil   String?
   
-  // Meta
   ip_address    String?
   user_agent    String?  @db.Text
   
@@ -390,8 +473,40 @@ model Opinia {
   @@map("opinie")
 }
 
-// Dodaj relację w modelu Oferta:
-model Oferta {
-  // ... istniejące pola ...
-  opinie      Opinia[]
+model Lead {
+  id            Int      @id @default(autoincrement())
+  operator_id   Int
+  operator      Operator @relation(fields: [operator_id], references: [id])
+  
+  imie          String
+  nazwisko      String
+  email         String
+  telefon       String
+  
+  miasto        String
+  ulica         String?
+  numer         String
+  
+  oferta_nazwa  String
+  
+  status        String   @default("nowy")
+  notatki       String?  @db.Text
+  
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@map("leady")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  password_hash String
+  name          String?
+  role          String   @default("admin")
+  
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@map("users")
 }

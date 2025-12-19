@@ -317,3 +317,81 @@ model SystemLog {
   message   String
   details   Json?
 }
+
+// ========== ZASIĘG OPERATORA ==========
+model ZasiegOperatora {
+  id          Int      @id @default(autoincrement())
+  operator_id Int
+  operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+  
+  // Adres z tabeli polska
+  teryt       String   // klucz główny
+  miejscowosc String
+  simc        String?
+  ulica       String?
+  id_ulicy    String?
+  nr          String?
+  
+  // Typ zasięgu
+  typ         String   // "cale_miasto", "konkretna_ulica", "konkretny_adres"
+  
+  // Dostępność
+  aktywny     Boolean  @default(true)
+  notatka     String?  @db.Text
+  
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@unique([operator_id, teryt])  // jeden operator nie może mieć duplikatu tego samego adresu
+  @@index([operator_id])
+  @@index([simc])
+  @@map("zasiegi_operatorow")
+}
+
+// Dodaj relację w modelu Operator:
+model Operator {
+  // ... istniejące pola ...
+  zasiegi     ZasiegOperatora[]
+  opinie      Opinia[]
+}
+
+// ========== OPINIE ==========
+model Opinia {
+  id            Int      @id @default(autoincrement())
+  
+  // Relacje
+  operator_id   Int?
+  operator      Operator? @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+  
+  oferta_id     Int?
+  oferta        Oferta?   @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
+  
+  // Dane opinii
+  autor         String
+  email         String?
+  ocena         Int      // 1-5 gwiazdek
+  tytul         String?
+  tresc         String   @db.Text
+  
+  // Moderacja
+  widoczna      Boolean  @default(false)  // domyślnie ukryta do moderacji
+  zatwierdzil   String?  // kto zatwierdził
+  
+  // Meta
+  ip_address    String?
+  user_agent    String?  @db.Text
+  
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([operator_id])
+  @@index([oferta_id])
+  @@index([widoczna])
+  @@map("opinie")
+}
+
+// Dodaj relację w modelu Oferta:
+model Oferta {
+  // ... istniejące pola ...
+  opinie      Opinia[]
+}

@@ -1,0 +1,21 @@
+{
+  "home": {
+    "hero": {
+      "title": "Find the best internet provider in your area",
+      "subtitle": "Compare offers, speeds and prices from hundreds of internet providers in Poland",
+      "cta": "Check availability",
+      "searchPlaceholder": "Enter address or postal code"
+    },
+    "howItWorks": {
+      "title": "How it works?",
+      "step1": "Enter address",
+      "step2": "Compare offers",
+      "step3": "Choose the best"
+    }
+  },
+  "common": {
+    "language": "Language",
+    "loading": "Loading...",
+    "error": "An error occurred"
+  }
+}

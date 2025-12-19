@@ -1,0 +1,319 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SearchMiejscowosc {
+  id               Int     @id @default(autoincrement())
+  simc             String? @db.VarChar(7)
+  nazwa            String
+  waga             Int     @default(0)
+  teryt            String? @db.VarChar(7)
+  nazwa_normalized String
+  powiat_label     String?
+
+  @@index([nazwa_normalized])
+  @@index([waga(sort: Desc)])
+  @@map("search_miejscowosci")
+}
+
+model SearchUlica {
+  id           Int    @id @default(autoincrement())
+  id_ulicy     String @db.VarChar(10)
+  ulica        String
+  ulica_norm   String
+  miasto_nazwa String
+  teryt_powiat String @db.VarChar(4)
+  simc         String? @db.VarChar(7)
+
+  @@index([teryt_powiat, ulica_norm])
+  @@index([miasto_nazwa])
+  @@map("search_ulice")
+}
+
+model SearchNumer {
+  id          Int     @id @default(autoincrement())
+  id_ulicy    String  @db.VarChar(10)
+  nr          String
+  nr_int      Int?
+  teryt       String? @db.VarChar(7)
+  simc        String? @db.VarChar(7)
+  miejscowosc String?
+  x           String?
+  y           String?
+
+  @@index([id_ulicy, nr_int])
+  @@map("search_numery")
+}
+
+model bts {
+  coto           String?
+  ISP            String?
+  Nr_Decyzji     String?  @map("Nr Decyzji")
+  Rodzaj_decyzji String?  @map("Rodzaj decyzji")
+  Data_wa_no_ci  String?  @map("Data ważności")
+  D_             String?  @map("Dł")
+  Szer           String?
+  City           String?
+  Lokalizacja    String?
+  IdStacji       String?
+  TERYT          String?
+  lon            Decimal? @db.Decimal(10, 7)
+  lat            Decimal? @db.Decimal(10, 7)
+
+  @@ignore
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model bts_locations {
+  lon  Decimal? @db.Decimal(10, 7)
+  lat  Decimal? @db.Decimal(10, 7)
+  isp  String?
+  tech String?
+
+  @@index([lon, lat], map: "idx_bts_loc_coords")
+  @@ignore
+}
+
+model kpoferc {
+  id_obszaru            String?  @map("id obszaru") @db.VarChar(50)
+  id_pa                 String?  @db.VarChar(50)
+  wojewodztwo           String?  @db.VarChar(100)
+  powiat                String?  @db.VarChar(100)
+  gmina                 String?  @db.VarChar(100)
+  terc                  String?  @db.VarChar(20)
+  miejscowosc           String?  @db.VarChar(150)
+  simc                  String?  @db.VarChar(20)
+  ulica                 String?  @db.VarChar(200)
+  ulic                  String?  @db.VarChar(20)
+  nr_porzadkowy         String?  @db.VarChar(20)
+  szerokosc             Decimal? @db.Decimal(10, 7)
+  dlugosc               Decimal? @db.Decimal(10, 7)
+  RODZAJ_OBIEKTU        String?  @map("RODZAJ OBIEKTU") @db.VarChar(50)
+  obiekt                String?  @db.VarChar(100)
+  LICZBA_LOKALI         Int?     @map("LICZBA LOKALI")
+  liczba_sed            Int?     @map("liczba sed")
+  do_100                Int?
+  kategoria             String?  @db.VarChar(50)
+  kwota                 Decimal? @db.Decimal(15, 2)
+  status_dofinansowania String?  @db.VarChar(50)
+  zrodlo                String?  @db.VarChar(20)
+
+  @@index([simc], map: "idx_kpoferc_simc")
+  @@index([ulic], map: "idx_kpoferc_ulic")
+  @@ignore
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model miejscowosci {
+  miejscowosc String?
+  simc        String? @db.VarChar(7)
+
+  @@index([miejscowosc], map: "idx_miejscowosci_trgm")
+  @@ignore
+}
+
+model miejscowosci_profile {
+  simc        String   @id @db.VarChar(7)
+  nazwa       String?
+  powiat      String?
+  woj         String?
+  pow         String?
+  adresy      BigInt?
+  duze_miasto Boolean?
+  slug        String?
+
+  @@index([slug], map: "idx_miejscowosci_slug")
+}
+
+model miejscowosci_seo {
+  slug                    String    @id
+  nazwa                   String?
+  powiat                  String?
+  wojewodztwo             String?
+  duze_miasto             Boolean?
+  simc_count              BigInt?
+  ulic                    BigInt?
+  budynkow                BigInt?
+  mieszkan_hp             BigInt?
+  orange_bud              BigInt?
+  tmobile_bud             BigInt?
+  upc_bud                 BigInt?
+  vectra_bud              BigInt?
+  netia_bud               BigInt?
+  moico_bud               BigInt?
+  orange_hp               BigInt?
+  tmobile_hp              BigInt?
+  upc_hp                  BigInt?
+  vectra_hp               BigInt?
+  netia_hp                BigInt?
+  kpo_ferc_bud            BigInt?
+  kpo_ferc_typy           String[]  @db.VarChar
+  max_budynek_hp          Int?
+  max_operatorow_budynek  Int?
+  operatorow_db           Int?
+  operatorzy              String[]
+  lokalni_operatorzy      String?
+  lokalni_opis            String?
+  meta_title              String?   @db.VarChar(70)
+  meta_description        String?   @db.VarChar(160)
+  h1                      String?   @db.VarChar(100)
+  opis_krotki             String?
+  breadcrumbs             Json?
+  schema_org              Json?
+  created_at              DateTime? @db.Timestamptz(6)
+  updated_at              DateTime? @db.Timestamptz(6)
+  keywords                String[]
+  robots                  String?   @default("index, follow") @db.VarChar(50)
+  canonical_url           String?   @db.VarChar(255)
+  og_title                String?   @db.VarChar(100)
+  og_description          String?   @db.VarChar(200)
+  og_image                String?   @db.VarChar(255)
+  og_url                  String?   @db.VarChar(255)
+  og_type                 String?   @default("website") @db.VarChar(50)
+  og_locale               String?   @default("pl_PL") @db.VarChar(10)
+  og_site_name            String?   @default("DostawcyInternetu.pl") @db.VarChar(100)
+  twitter_card            String?   @default("summary_large_image") @db.VarChar(50)
+  twitter_title           String?   @db.VarChar(100)
+  twitter_description     String?   @db.VarChar(200)
+  twitter_image           String?   @db.VarChar(255)
+  hreflang                Json?
+  schema_webpage          Json?
+  schema_breadcrumb       Json?
+  schema_local_business   Json?
+  schema_faq              Json?
+  schema_service          Json?
+  schema_aggregate_offer  Json?
+  ai_summary              String?
+  ai_context              Json?
+  faq                     Json?
+  last_seo_update         DateTime? @db.Timestamp(6)
+  og_image_width          Int?      @default(1200)
+  og_image_height         Int?      @default(630)
+  og_image_alt            String?   @db.VarChar(200)
+  twitter_site            String?   @default("@dostawcyinternetu") @db.VarChar(50)
+  schema_organization     Json?
+  schema_itemlist         Json?
+  schema_aggregate_rating Json?
+  schema_speakable        Json?
+  schema_sitesearch       Json?
+  ai_keywords             String[]
+  ai_entities             Json?
+  ai_intent               String[]
+  rich_snippet_type       String?   @db.VarChar(50)
+  schema_graph            Json?
+
+  @@index([nazwa], map: "idx_seo_nazwa")
+  @@index([wojewodztwo], map: "idx_seo_wojewodztwo")
+}
+
+model miejscowosci_slug {
+  miejscowosc String?
+  simc        String? @db.VarChar(7)
+  slug        String?
+  gmina       String?
+  adresy      BigInt?
+  id          Int     @id @default(autoincrement())
+
+  @@index([simc], map: "idx_slug_simc")
+  @@index([miejscowosc], map: "idx_slug_miejscowosc")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model polska {
+  teryt        String?
+  miejscowosc  String?
+  ulica        String?
+  nr           String
+  adruni       String?
+  simc         String   @db.VarChar(7)
+  id_ulicy     String   @db.VarChar(7)
+  x            String?  @db.VarChar(6)
+  y            String?  @db.VarChar(6)
+  upc_hp       Int?
+  ulica_core   String?
+  timo_hp      Int?
+  netia_hp     Int?
+  vectra_hp    Int?
+  nju_hp       String?
+  opl_hp       Int?
+  moico_hp     Int?     @default(0)
+  krawarkon_hp Int?     @default(0)
+  matrix       String?
+  ulica_std    String?  @db.VarChar(255)
+  kpo_ferc     String?  @db.VarChar(20)
+  lon          Decimal? @db.Decimal(10, 7)
+  lat          Decimal? @db.Decimal(10, 7)
+  bts_1_m      Int?
+  bts_1_isp    String?  @db.VarChar(30)
+  bts_1_tech   String?  @db.VarChar(150)
+  bts_2_m      Int?
+  bts_2_isp    String?  @db.VarChar(30)
+  bts_2_tech   String?  @db.VarChar(150)
+  bts_3_m      Int?
+  bts_3_isp    String?  @db.VarChar(30)
+  bts_3_tech   String?  @db.VarChar(150)
+  slug         String?  @db.VarChar(100)
+
+  @@id([simc, id_ulicy, nr])
+  @@index([lon, lat], map: "idx_polska_coords")
+  @@index([slug], map: "idx_polska_slug")
+  @@index([miejscowosc], map: "idx_polska_miejscowosc")
+}
+
+model simc {
+  woj      String?
+  pow      String?
+  gmi      String?
+  rodz_gmi String?
+  rm       String?
+  mz       String?
+  nazwa    String?
+  sym      String  @id
+  sympod   String?
+  stan_na  String?
+
+  @@map("simc")
+}
+
+model terc {
+  woj       String
+  pow       String?
+  gmi       String?
+  rodz      String?
+  nazwa     String
+  nazwa_dod String
+
+  @@map("terc")
+  @@ignore
+}
+
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model ulice {
+  miejscowosc String?
+  ulica       String?
+  ulica_core  String?
+
+  @@ignore
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  feature   String
+  level     String
+  message   String
+  details   Json?
+}

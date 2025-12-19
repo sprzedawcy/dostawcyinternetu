@@ -1,0 +1,21 @@
+{
+  "home": {
+    "hero": {
+      "title": "Znajdź najlepszego operatora internetowego w Twojej okolicy",
+      "subtitle": "Porównaj oferty, prędkości i ceny od setek dostawców internetu w Polsce",
+      "cta": "Sprawdź dostępność",
+      "searchPlaceholder": "Wpisz adres lub kod pocztowy"
+    },
+    "howItWorks": {
+      "title": "Jak to działa?",
+      "step1": "Wprowadź adres",
+      "step2": "Porównaj oferty",
+      "step3": "Wybierz najlepszą"
+    }
+  },
+  "common": {
+    "language": "Język",
+    "loading": "Ładowanie...",
+    "error": "Wystąpił błąd"
+  }
+}

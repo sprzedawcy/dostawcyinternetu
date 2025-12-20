@@ -324,6 +324,9 @@ model Operator {
   logo_url        String?
   email_handlowca String?
   
+  aktywny         Boolean  @default(true)
+  redirect_url    String?
+  
   oferty          Oferta[]
   leady           Lead[]
   zasiegi         ZasiegOperatora[]
@@ -339,6 +342,7 @@ model Oferta {
   id                    Int      @id @default(autoincrement())
   nazwa                 String
   custom_url            String?
+  redirect_url          String?
   opis                  String?  @db.Text
   
   abonament             Decimal  @db.Decimal(10, 2)

@@ -92,6 +92,42 @@ export default function OperatorForm({ operator, mode }: Props) {
         </p>
       </div>
 
+      {/* Redirect URL */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          URL przekierowania (gdy operator nieaktywny)
+        </label>
+        <input
+          type="text"
+          name="redirect_url"
+          defaultValue={operator?.redirect_url || ""}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="https://inny-operator.pl"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Gdy operator zostanie dezaktywowany, profil przekieruje na ten adres
+        </p>
+      </div>
+
+      {/* Status aktywny - tylko przy edycji */}
+      {mode === "edit" && (
+        <div>
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              name="aktywny"
+              value="true"
+              defaultChecked={operator?.aktywny}
+              className="mr-2 h-4 w-4 text-blue-600"
+            />
+            <span className="text-sm font-medium text-gray-700">Operator aktywny</span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1 ml-6">
+            Dezaktywacja ukryje operatora i przekieruje na podany URL
+          </p>
+        </div>
+      )}
+
       {/* Opis */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">

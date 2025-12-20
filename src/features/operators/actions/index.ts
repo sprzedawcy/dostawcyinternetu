@@ -48,10 +48,10 @@ export async function createOperator(formData: FormData) {
   const opis = formData.get('opis') as string;
   const email_handlowca = formData.get('email_handlowca') as string;
   const logo_url = formData.get('logo_url') as string;
+  const redirect_url = formData.get('redirect_url') as string;
 
   const slug = slugify(nazwa);
 
-  // Sprawdź czy slug już istnieje
   const existing = await prisma.operator.findUnique({
     where: { slug }
   });
@@ -67,6 +67,8 @@ export async function createOperator(formData: FormData) {
       opis: opis || null,
       email_handlowca: email_handlowca || null,
       logo_url: logo_url || null,
+      redirect_url: redirect_url || null,
+      aktywny: true,
     }
   });
 
@@ -80,10 +82,11 @@ export async function updateOperator(id: number, formData: FormData) {
   const opis = formData.get('opis') as string;
   const email_handlowca = formData.get('email_handlowca') as string;
   const logo_url = formData.get('logo_url') as string;
+  const redirect_url = formData.get('redirect_url') as string;
+  const aktywny = formData.get('aktywny') === 'true';
 
   const slug = slugify(nazwa);
 
-  // Sprawdź czy nowy slug nie koliduje z innym operatorem
   const existing = await prisma.operator.findFirst({
     where: { 
       slug,
@@ -103,6 +106,8 @@ export async function updateOperator(id: number, formData: FormData) {
       opis: opis || null,
       email_handlowca: email_handlowca || null,
       logo_url: logo_url || null,
+      redirect_url: redirect_url || null,
+      aktywny,
     }
   });
 
@@ -111,10 +116,30 @@ export async function updateOperator(id: number, formData: FormData) {
   return operator;
 }
 
-// 5. USUŃ OPERATORA
+// 5. USUŃ OPERATORA (zachowane dla kompatybilności, ale nie używane)
 export async function deleteOperator(id: number) {
   await prisma.operator.delete({
     where: { id }
+  });
+
+  revalidatePath('/admin/operatorzy');
+}
+
+// 6. PRZEŁĄCZ STATUS
+export async function toggleOperatorStatus(id: number) {
+  const operator = await prisma.operator.findUnique({
+    where: { id }
+  });
+
+  if (!operator) {
+    throw new Error('Operator nie istnieje');
+  }
+
+  await prisma.operator.update({
+    where: { id },
+    data: {
+      aktywny: !operator.aktywny
+    }
   });
 
   revalidatePath('/admin/operatorzy');

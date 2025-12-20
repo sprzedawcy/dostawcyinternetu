@@ -5,9 +5,10 @@ import { notFound } from "next/navigation";
 export default async function EditOperatorPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const operator = await getOperator(parseInt(params.id));
+  const { id } = await params;
+  const operator = await getOperator(parseInt(id));
 
   if (!operator) {
     notFound();
@@ -23,7 +24,6 @@ export default async function EditOperatorPage({
         <OperatorForm mode="edit" operator={operator} />
       </div>
 
-      {/* Statystyki */}
       <div className="mt-6 grid grid-cols-3 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Oferty</p>

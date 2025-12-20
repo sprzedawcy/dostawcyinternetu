@@ -2,6 +2,11 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
+// Konwersja Decimal/Date na proste typy
+function serializeOperator(data: any): any {
+  return JSON.parse(JSON.stringify(data));
+}
+
 // Funkcja slugify
 function slugify(text: string): string {
   return text
@@ -15,7 +20,7 @@ function slugify(text: string): string {
 
 // 1. POBIERZ WSZYSTKICH OPERATORÓW
 export async function getOperators() {
-  return await prisma.operator.findMany({
+  const operators = await prisma.operator.findMany({
     include: {
       _count: {
         select: {
@@ -27,11 +32,13 @@ export async function getOperators() {
     },
     orderBy: { created_at: 'desc' }
   });
+  
+  return operators.map(serializeOperator);
 }
 
 // 2. POBIERZ JEDNEGO OPERATORA
 export async function getOperator(id: number) {
-  return await prisma.operator.findUnique({
+  const operator = await prisma.operator.findUnique({
     where: { id },
     include: {
       oferty: true,
@@ -40,6 +47,9 @@ export async function getOperator(id: number) {
       leady: true,
     }
   });
+  
+  if (!operator) return null;
+  return serializeOperator(operator);
 }
 
 // 3. DODAJ OPERATORA

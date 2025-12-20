@@ -11,7 +11,12 @@ function normalize(str: string) {
     .trim();
 }
 
-// Podpowiedzi miejscowości (używa zoptymalizowanej tabeli search_miejscowosci)
+// Usuń powiat z nazwy miejscowości "Warszawa (m. Warszawa)" → "Warszawa"
+function cleanMiejscowoscName(name: string): string {
+  return name.replace(/\s*\([^)]+\)\s*$/, '').trim();
+}
+
+// Podpowiedzi miejscowości (z powiatami)
 export async function suggestMiejscowosci(query: string) {
   if (!query || query.length < 2) return [];
   
@@ -24,14 +29,17 @@ export async function suggestMiejscowosci(query: string) {
       }
     },
     orderBy: { waga: 'desc' },
-    take: 10,
-    select: { nazwa: true }
+    take: 15,
+    select: { nazwa: true, powiat_label: true }
   });
   
-  return results.map(r => r.nazwa);
+  // Zwróć "Nazwa (powiat)" dla lepszej identyfikacji
+  return results.map(r => 
+    r.powiat_label ? `${r.nazwa} (${r.powiat_label})` : r.nazwa
+  );
 }
 
-// Podpowiedzi ulic (używa zoptymalizowanej tabeli search_ulice)
+// Podpowiedzi ulic
 export async function suggestUlice(query: string, miejscowosc?: string) {
   if (!query || query.length < 2) return [];
   
@@ -40,8 +48,9 @@ export async function suggestUlice(query: string, miejscowosc?: string) {
   // Jeśli mamy miejscowość, znajdź jej SIMC
   let simc: string | undefined;
   if (miejscowosc) {
+    const cleanName = cleanMiejscowoscName(miejscowosc);
     const city = await prisma.searchMiejscowosc.findFirst({
-      where: { nazwa: miejscowosc },
+      where: { nazwa: cleanName },
       select: { simc: true }
     });
     simc = city?.simc;
@@ -60,7 +69,7 @@ export async function suggestUlice(query: string, miejscowosc?: string) {
   const results = await prisma.searchUlica.findMany({
     where,
     orderBy: { ulica: 'asc' },
-    take: 10,
+    take: 15,
     select: { ulica: true },
     distinct: ['ulica']
   });
@@ -103,9 +112,10 @@ export async function searchCoveragePivot(params: SearchParams) {
   }
   
   if (miejscowosc) {
-    // Szukaj dokładnej nazwy miejscowości
+    // Usuń powiat z nazwy "(powiat)" przed wyszukiwaniem
+    const cleanName = cleanMiejscowoscName(miejscowosc);
     conditions.push(`LOWER(p.miejscowosc) = $${paramIndex}`);
-    values.push(miejscowosc.toLowerCase());
+    values.push(cleanName.toLowerCase());
     paramIndex++;
   }
   
@@ -134,7 +144,7 @@ export async function searchCoveragePivot(params: SearchParams) {
   const operatorColumns = operators.map(op => `
     (SELECT hp_count FROM operator_coverage oc 
      WHERE oc.simc = p.simc AND oc.id_ulicy = p.id_ulicy AND oc.nr = p.nr 
-     AND oc.operator_id = ${op.id}) as "hp_${op.id}"
+     AND oc.operator_id = ${op.id} LIMIT 1) as "hp_${op.id}"
   `).join(',');
 
   const dataQuery = `
@@ -157,7 +167,7 @@ export async function searchCoveragePivot(params: SearchParams) {
   `;
 
   const countQuery = `
-    SELECT COUNT(DISTINCT (p.simc, p.id_ulicy, p.nr))::int as total
+    SELECT COUNT(*)::int as total
     FROM polska p
     WHERE ${whereClause}
     AND EXISTS (

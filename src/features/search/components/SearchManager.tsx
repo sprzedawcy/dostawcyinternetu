@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { searchCities, searchStreets, searchNumbers, cityHasStreets } from "@/src/features/coverage/actions/search";
 import { searchOffersForAddress } from "@/src/features/offers/actions/search";
+import OfferResults from "./OfferResults";
 
 export default function SearchManager() {
   // City
@@ -101,12 +102,30 @@ export default function SearchManager() {
     setLoading(false);
   };
 
+  const handleNewSearch = () => {
+    setResults(null);
+    setSelectedCity(null);
+    setSelectedStreet(null);
+    setSelectedNumber(null);
+    setCityHasStreetsFlag(true);
+    setNumberQuery('');
+  };
+
+  // Jeśli są wyniki - pokaż komponent wyników
+  if (results) {
+    return (
+      <div className="bg-white rounded-3xl shadow-xl p-8">
+        <OfferResults results={results} onClose={handleNewSearch} />
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-3xl shadow-xl p-8">
       <div className="grid grid-cols-3 gap-4 mb-6">
         {/* MIASTO */}
         <div>
-          <label className="block font-bold text-black mb-2">Miejscowość *</label>
+          <label className="block font-bold text-gray-900 mb-2">Miejscowość *</label>
           {selectedCity ? (
             <div className="relative p-4 bg-green-100 border-4 border-green-500 rounded-xl">
               <div className="font-bold text-green-900">{selectedCity.nazwa}</div>
@@ -144,7 +163,7 @@ export default function SearchManager() {
                       onClick={() => handleCitySelect(city)}
                       className="w-full p-4 text-left hover:bg-blue-100 border-b-2 border-gray-200 last:border-0"
                     >
-                      <div className="font-bold text-black">{city.nazwa}</div>
+                      <div className="font-bold text-gray-900">{city.nazwa}</div>
                       <div className="text-sm text-gray-600">{city.powiat}</div>
                     </button>
                   ))}
@@ -156,7 +175,7 @@ export default function SearchManager() {
 
         {/* ULICA */}
         <div>
-          <label className="block font-bold text-black mb-2">
+          <label className="block font-bold text-gray-900 mb-2">
             Ulica {!cityHasStreetsFlag && selectedCity && '(brak)'}
           </label>
           {selectedStreet ? (
@@ -214,7 +233,7 @@ export default function SearchManager() {
 
         {/* NUMER */}
         <div>
-          <label className="block font-bold text-black mb-2">Numer</label>
+          <label className="block font-bold text-gray-900 mb-2">Numer</label>
           {selectedNumber ? (
             <div className="relative p-4 bg-green-100 border-4 border-green-500 rounded-xl">
               <div className="font-bold text-green-900 text-center text-2xl">{selectedNumber.nr}</div>
@@ -281,58 +300,6 @@ export default function SearchManager() {
       >
         {loading ? '⏳ SZUKAM...' : '🔍 SPRAWDŹ OFERTY'}
       </button>
-
-      {/* WYNIKI */}
-      {results && (
-        <div className="mt-8 p-6 bg-gray-100 rounded-xl">
-          <h2 className="text-2xl font-black mb-4">📊 WYNIKI</h2>
-          
-          <div className="mb-4">
-            <p className="font-bold">📍 Adres:</p>
-            <p>{results.address?.miejscowosc} {results.address?.ulica} {results.address?.nr}</p>
-          </div>
-
-          <div className="mb-4">
-            <p className="font-bold">📡 Kablowe:</p>
-            <p>{results.hasCable ? '✅ TAK' : '❌ NIE'}</p>
-          </div>
-
-          {results.address?.operators && results.address.operators.length > 0 && (
-            <div className="mb-4">
-              <p className="font-bold">🏢 Operatorzy:</p>
-              {results.address.operators.map((op: any, i: number) => (
-                <p key={i}>- {op.slug} ({op.hp_count} HP)</p>
-              ))}
-            </div>
-          )}
-
-          <div className="mb-4">
-            <p className="font-bold">💰 Oferty:</p>
-            <p>{results.offers?.length || 0} ofert</p>
-            {results.offers?.map((offer: any, i: number) => (
-              <div key={i} className="p-3 bg-white rounded mt-2">
-                <p className="font-bold">{offer.operator.nazwa} - {offer.nazwa}</p>
-                <p>{offer.download_mbps} Mb/s - {offer.abonament} zł/mies</p>
-              </div>
-            ))}
-          </div>
-
-          {results.bts && results.bts.length > 0 && (
-            <div className="mb-4">
-              <p className="font-bold">📶 BTS:</p>
-              {results.bts.map((bts: any, i: number) => (
-                <p key={i}>- {bts.isp} ({bts.distance_m}m)</p>
-              ))}
-            </div>
-          )}
-
-          {results.hasKpoFerc && (
-            <div className="p-4 bg-yellow-100 border-4 border-yellow-500 rounded-xl">
-              <p className="font-bold">🏗️ BUDOWA W PLANACH</p>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

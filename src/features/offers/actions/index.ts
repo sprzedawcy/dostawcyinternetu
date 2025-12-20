@@ -71,6 +71,8 @@ export async function createOffer(formData: FormData) {
   const oferta_specjalna = formData.get('oferta_specjalna') === 'true';
   const dom_blok_info = formData.get('dom_blok_info') === 'true';
   const dom_blok_tekst = formData.get('dom_blok_tekst') as string;
+  const typ_polaczenia = formData.get('typ_polaczenia') as string;
+  const priorytet = formData.get('priorytet') ? parseInt(formData.get('priorytet') as string) : 0;
 
   const oferta = await prisma.oferta.create({
     data: {
@@ -92,6 +94,8 @@ export async function createOffer(formData: FormData) {
       oferta_specjalna,
       dom_blok_info,
       dom_blok_tekst: dom_blok_tekst || null,
+      typ_polaczenia,
+      priorytet,
     }
   });
 
@@ -120,6 +124,8 @@ export async function updateOffer(id: number, formData: FormData) {
   const dom_blok_info = formData.get('dom_blok_info') === 'true';
   const dom_blok_tekst = formData.get('dom_blok_tekst') as string;
   const aktywna = formData.get('aktywna') === 'true';
+  const typ_polaczenia = formData.get('typ_polaczenia') as string;
+  const priorytet = formData.get('priorytet') ? parseInt(formData.get('priorytet') as string) : 0;
 
   const oferta = await prisma.oferta.update({
     where: { id },
@@ -143,6 +149,8 @@ export async function updateOffer(id: number, formData: FormData) {
       dom_blok_info,
       dom_blok_tekst: dom_blok_tekst || null,
       aktywna,
+      typ_polaczenia,
+      priorytet,
     }
   });
 

@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -371,6 +372,11 @@ model Oferta {
   opinie                Opinia[]
   
   aktywna               Boolean  @default(true)
+  
+  // NOWE POLA - typ połączenia i priorytet
+  typ_polaczenia        String   @default("kablowe")  // kablowe, komorkowe
+  priorytet             Int      @default(0)          // 0-100, wyższy = wyżej
+  
   created_at            DateTime @default(now())
   updated_at            DateTime @updatedAt
 

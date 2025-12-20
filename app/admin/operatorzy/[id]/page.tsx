@@ -1,6 +1,7 @@
 import { getOperator } from "@/src/features/operators/actions";
 import OperatorForm from "@/src/features/operators/components/OperatorForm";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 
 export default async function EditOperatorPage({
   params,
@@ -37,6 +38,16 @@ export default async function EditOperatorPage({
           <p className="text-sm text-gray-600">Zasięg</p>
           <p className="text-2xl font-bold">{operator.zasiegi.length}</p>
         </div>
+      </div>
+
+      {/* Link do zarządzania zasięgiem */}
+      <div className="mt-6">
+        <Link
+          href={`/admin/operatorzy/${operator.id}/zasieg`}
+          className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
+        >
+          🗺️ Zarządzaj zasięgiem
+        </Link>
       </div>
     </div>
   );

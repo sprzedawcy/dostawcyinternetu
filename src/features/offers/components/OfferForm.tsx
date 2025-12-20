@@ -229,6 +229,41 @@ export default function OfferForm({ offer, operators, mode }: Props) {
         </div>
       </div>
 
+{/* Typ połączenia */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Typ połączenia *
+        </label>
+        <select
+          name="typ_polaczenia"
+          required
+          defaultValue={offer?.typ_polaczenia || "kablowe"}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="kablowe">Kablowe (światłowód, DOCSIS)</option>
+          <option value="komorkowe">Komórkowe (LTE, 5G)</option>
+        </select>
+      </div>
+
+      {/* Priorytet */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Priorytet wyświetlania (0-100)
+        </label>
+        <input
+          type="number"
+          name="priorytet"
+          min="0"
+          max="100"
+          defaultValue={offer?.priorytet || 0}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          placeholder="0"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Wyższy priorytet = wyżej w liście wyników (0 = domyślny)
+        </p>
+      </div>
+
       {/* Checkboxy */}
       <div className="space-y-3">
         <label className="flex items-center">

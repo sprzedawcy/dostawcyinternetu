@@ -332,6 +332,7 @@ model Operator {
   leady           Lead[]
   zasiegi         ZasiegOperatora[]
   opinie          Opinia[]
+  coverage    OperatorCoverage[]  
   
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
@@ -342,24 +343,30 @@ model Operator {
 model Oferta {
   id                    Int      @id @default(autoincrement())
   nazwa                 String
-  custom_url            String?
+  custom_url            String?  @unique
   redirect_url          String?
   opis                  String?  @db.Text
   
+  // Ceny dla bloków (domyślne)
   abonament             Decimal  @db.Decimal(10, 2)
   instalacja            Decimal? @db.Decimal(10, 2)
   aktywacja             Decimal? @db.Decimal(10, 2)
+  
+  // Ceny dla domów jednorodzinnych (HP 1-2)
+  abonament_dom         Decimal? @db.Decimal(10, 2)
+  instalacja_dom        Decimal? @db.Decimal(10, 2)
+  aktywacja_dom         Decimal? @db.Decimal(10, 2)
   
   zobowiazanie_miesiace Int?
   download_mbps         Int
   upload_mbps           Int
   technologia           String?
+  wifi                  String?  // WIFI5, WIFI6, WIFI7
   
   kategoria             String
   
   wyrozoniona           Boolean  @default(false)
   lokalna               Boolean  @default(false)
-  oferta_specjalna      Boolean  @default(false)
   dom_blok_info         Boolean  @default(false)
   dom_blok_tekst        String?  @db.Text
   
@@ -373,9 +380,8 @@ model Oferta {
   
   aktywna               Boolean  @default(true)
   
-  // NOWE POLA - typ połączenia i priorytet
-  typ_polaczenia        String   @default("kablowe")  // kablowe, komorkowe
-  priorytet             Int      @default(0)          // 0-100, wyższy = wyżej
+  typ_polaczenia        String   @default("kablowe")
+  priorytet             Int      @default(0)
   
   created_at            DateTime @default(now())
   updated_at            DateTime @updatedAt
@@ -519,4 +525,26 @@ model User {
   updated_at    DateTime @updatedAt
 
   @@map("users")
+}
+
+// Zasięgi operatorów (edytowalne w CMS)
+model OperatorCoverage {
+  id          Int      @id @default(autoincrement())
+  operator_id Int
+  operator    Operator @relation(fields: [operator_id], references: [id])
+  
+  simc        String   @db.VarChar(7)
+  id_ulicy    String   @db.VarChar(7)
+  nr          String
+  
+  hp_count    Int      @default(0)
+  source      String?  @db.VarChar(50)  // skąd import: "csv", "manual", "migration"
+  
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  
+  @@unique([operator_id, simc, id_ulicy, nr])
+  @@index([simc, id_ulicy, nr])
+  @@index([operator_id])
+  @@map("operator_coverage")
 }

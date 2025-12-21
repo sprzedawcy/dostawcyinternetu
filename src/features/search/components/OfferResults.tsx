@@ -8,6 +8,7 @@ interface Props {
 }
 
 export default function OfferResults({ results, onClose }: Props) {
+  console.log("=== RESULTS ADDRESS ===", results.address);
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<'default' | 'speed-desc' | 'speed-asc' | 'price-asc' | 'price-desc'>('default');
   const [selectedOperator, setSelectedOperator] = useState<string | null>(null);
@@ -148,7 +149,7 @@ export default function OfferResults({ results, onClose }: Props) {
 
       <div className="space-y-4">
         {paginatedOffers.map((offer: any) => (
-          <OfferCard key={offer.id} offer={offer} />
+          <OfferCard key={offer.id} offer={offer} address={results.address} />
         ))}
       </div>
 
@@ -189,12 +190,17 @@ export default function OfferResults({ results, onClose }: Props) {
   );
 }
 
-function OfferCard({ offer }: { offer: any }) {
+function OfferCard({ offer, address }: { offer: any; address: any }) {
   const isMobile = offer.typ_polaczenia === 'komorkowe';
-const offerUrl = `/oferta/${offer.operator?.slug}/${offer.custom_url || offer.id}`;
+  
+  const addressParam = address 
+    ? `?adres=${encodeURIComponent(`${address.miejscowosc || ''}|${address.ulica || ''}|${address.nr || ''}|${address.slug || ''}`)}` 
+    : '';
+  const offerUrl = `/oferta/${offer.operator?.slug}/${offer.custom_url || offer.id}${addressParam}`;
+  
   return (
     <div className={`p-5 bg-white rounded-2xl border-2 ${offer.wyrozoniona ? 'border-yellow-400 shadow-lg' : 'border-gray-200'} hover:shadow-md transition-shadow`}>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap md:flex-nowrap">
         <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden">
           {offer.operator?.logo_url ? (
             <img src={offer.operator.logo_url} alt={offer.operator.nazwa} className="w-full h-full object-contain p-2" />
@@ -206,7 +212,7 @@ const offerUrl = `/oferta/${offer.operator?.slug}/${offer.custom_url || offer.id
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap gap-2 mb-1">
             {offer.wyrozoniona && (
-              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">WYROOZNIONA</span>
+              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">WYROZONIONA</span>
             )}
             {offer.lokalna && (
               <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-xs font-bold rounded">LOKALNA</span>
@@ -219,17 +225,13 @@ const offerUrl = `/oferta/${offer.operator?.slug}/${offer.custom_url || offer.id
           <p className="text-sm text-gray-600">{offer.operator?.nazwa}</p>
 
           <div className="flex flex-wrap gap-4 mt-3">
-            <div className="flex items-center gap-2">
-              <div>
-                <p className="text-xl font-black text-gray-900">{offer.download_mbps} Mb/s</p>
-                <p className="text-xs text-gray-500">pobieranie</p>
-              </div>
+            <div>
+              <p className="text-xl font-black text-gray-900">{offer.download_mbps} Mb/s</p>
+              <p className="text-xs text-gray-500">pobieranie</p>
             </div>
-            <div className="flex items-center gap-2">
-              <div>
-                <p className="text-xl font-black text-gray-900">{offer.upload_mbps} Mb/s</p>
-                <p className="text-xs text-gray-500">wysylanie</p>
-              </div>
+            <div>
+              <p className="text-xl font-black text-gray-900">{offer.upload_mbps} Mb/s</p>
+              <p className="text-xs text-gray-500">wysylanie</p>
             </div>
             {offer.technologia && (
               <div>
@@ -246,16 +248,21 @@ const offerUrl = `/oferta/${offer.operator?.slug}/${offer.custom_url || offer.id
           </div>
         </div>
 
-        <div className="flex-shrink-0 text-right">
+        <div className="flex-shrink-0 text-right w-full md:w-auto mt-4 md:mt-0">
           <div className="mb-3">
             <p className="text-3xl font-black text-gray-900">
               {parseFloat(offer.abonament).toFixed(0)} <span className="text-lg">zl</span>
             </p>
             <p className="text-sm text-gray-500">/miesiac</p>
           </div>
-          <Link href={offerUrl} className="inline-block px-6 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors">
-            Zamow
-          </Link>
+          <div className="flex flex-col gap-2">
+            <Link href={offerUrl} className="inline-block px-6 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors text-center">
+              Kontakt z {offer.operator?.nazwa}
+            </Link>
+            <a href="tel:532274808" className="text-xs text-gray-500 hover:text-gray-700">
+              lub zadzwon: 532 274 808
+            </a>
+          </div>
         </div>
       </div>
     </div>

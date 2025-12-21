@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -332,7 +331,7 @@ model Operator {
   leady           Lead[]
   zasiegi         ZasiegOperatora[]
   opinie          Opinia[]
-  coverage    OperatorCoverage[]  
+  coverage        OperatorCoverage[]  
   
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
@@ -347,12 +346,10 @@ model Oferta {
   redirect_url          String?
   opis                  String?  @db.Text
   
-  // Ceny dla bloków (domyślne)
   abonament             Decimal  @db.Decimal(10, 2)
   instalacja            Decimal? @db.Decimal(10, 2)
   aktywacja             Decimal? @db.Decimal(10, 2)
   
-  // Ceny dla domów jednorodzinnych (HP 1-2)
   abonament_dom         Decimal? @db.Decimal(10, 2)
   instalacja_dom        Decimal? @db.Decimal(10, 2)
   aktywacja_dom         Decimal? @db.Decimal(10, 2)
@@ -361,7 +358,7 @@ model Oferta {
   download_mbps         Int
   upload_mbps           Int
   technologia           String?
-  wifi                  String?  // WIFI5, WIFI6, WIFI7
+  wifi                  String?
   
   kategoria             String
   
@@ -377,6 +374,7 @@ model Oferta {
   lokalizacje           OfertaLokalizacja[]
   programy_tv           ProgramTV[]
   opinie                Opinia[]
+  leady                 Lead[]
   
   aktywna               Boolean  @default(true)
   
@@ -490,28 +488,60 @@ model Opinia {
 }
 
 model Lead {
-  id            Int      @id @default(autoincrement())
-  operator_id   Int
-  operator      Operator @relation(fields: [operator_id], references: [id])
-  
-  imie          String
-  nazwisko      String
-  email         String
+  id            Int       @id @default(autoincrement())
+  imie_nazwisko String
   telefon       String
+  email         String
   
-  miasto        String
+  oferta_id     Int?
+  oferta        Oferta?   @relation(fields: [oferta_id], references: [id])
+  
+  operator_id   Int?
+  operator      Operator? @relation(fields: [operator_id], references: [id])
+  
+  miejscowosc   String?
   ulica         String?
-  numer         String
+  nr            String?
   
-  oferta_nazwa  String
+  // Statusy: nowy, kontakt, umowiony, zainstalowany, rozliczony, spad
+  status        String    @default("nowy")
   
-  status        String   @default("nowy")
-  notatki       String?  @db.Text
+  // Daty dla statusów
+  data_kontaktu_plan  DateTime?
+  data_umowiony       DateTime?
+  data_instalacji     DateTime?
+  miesiac_rozliczenia String?   // np. "2025-01"
   
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  // Powód spad
+  spad_powod    String?   // brak_kontaktu, zadluzenie, brak_sieci, inny
+  
+  notatki       String?   @db.Text
+  zrodlo        String?
+  upominek      String?
+  
+  // Historia kontaktów
+  kontakty      LeadKontakt[]
+  
+  // Alert
+  ostatni_alert DateTime?
+  
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
 
   @@map("leady")
+}
+
+model LeadKontakt {
+  id          Int      @id @default(autoincrement())
+  lead_id     Int
+  lead        Lead     @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+  
+  data        DateTime @default(now())
+  uwagi       String?  @db.Text
+  
+  created_at  DateTime @default(now())
+
+  @@map("leady_kontakty")
 }
 
 model User {
@@ -527,7 +557,6 @@ model User {
   @@map("users")
 }
 
-// Zasięgi operatorów (edytowalne w CMS)
 model OperatorCoverage {
   id          Int      @id @default(autoincrement())
   operator_id Int
@@ -538,7 +567,7 @@ model OperatorCoverage {
   nr          String
   
   hp_count    Int      @default(0)
-  source      String?  @db.VarChar(50)  // skąd import: "csv", "manual", "migration"
+  source      String?  @db.VarChar(50)
   
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
@@ -547,14 +576,4 @@ model OperatorCoverage {
   @@index([simc, id_ulicy, nr])
   @@index([operator_id])
   @@map("operator_coverage")
-}
-model MiejscowosciSlug {
-  id          Int     @id @default(autoincrement())
-  miejscowosc String
-  simc        String
-  slug        String  @unique
-  gmina       String?
-  adresy      Int?
-  
-  @@map("miejscowosci_slug")
 }

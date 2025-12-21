@@ -11,14 +11,11 @@ export default async function MiejscowoscPage({ params }: Props) {
   const { miejscowosc } = await params;
   const slugDecoded = decodeURIComponent(miejscowosc);
   
-  // Znajdz miejscowosc po slug
   const miejscowoscData = await prisma.polska.findFirst({
     where: { slug: slugDecoded },
     select: { 
       miejscowosc: true, 
-      simc: true, 
-      powiat: true,
-      wojewodztwo: true 
+      simc: true
     }
   });
 
@@ -26,7 +23,6 @@ export default async function MiejscowoscPage({ params }: Props) {
     notFound();
   }
 
-  // Pobierz operatorow z zasiegiem w tej miejscowosci
   const coverages = await prisma.operatorCoverage.findMany({
     where: { simc: miejscowoscData.simc },
     select: { operator_id: true },
@@ -35,7 +31,6 @@ export default async function MiejscowoscPage({ params }: Props) {
 
   const operatorIds = coverages.map(c => c.operator_id);
 
-  // Pobierz oferty kablowe tych operatorow + wszystkie komorkowe
   const offers = await prisma.oferta.findMany({
     where: {
       aktywna: true,
@@ -59,15 +54,11 @@ export default async function MiejscowoscPage({ params }: Props) {
     ]
   });
 
-  // Unikalni operatorzy do filtrow
   const operators = [...new Map(offers.map(o => [o.operator.id, o.operator])).values()];
-
-  // Serializacja
   const serializedOffers = JSON.parse(JSON.stringify(offers));
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* BREADCRUMB */}
       <div className="bg-white border-b">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <nav className="flex items-center gap-2 text-sm text-gray-600">
@@ -79,29 +70,27 @@ export default async function MiejscowoscPage({ params }: Props) {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* NAGLOWEK */}
         <div className="mb-8">
           <h1 className="text-3xl font-black text-gray-900 mb-2">
-            Internet w miejscowości {miejscowoscData.miejscowosc}
+            Internet w miejscowosci {miejscowoscData.miejscowosc}
           </h1>
           <p className="text-gray-600">
-            Porównaj {offers.length} ofert internetu dostępnych w {miejscowoscData.miejscowosc} 
-            {miejscowoscData.powiat && ` (powiat ${miejscowoscData.powiat})`}.
-            Sprawdź ceny, prędkości i wybierz najlepszą ofertę dla siebie.
+            Porownaj {offers.length} ofert internetu dostepnych w {miejscowoscData.miejscowosc}.
+            Sprawdz ceny, predkosci i wybierz najlepsza oferte dla siebie.
           </p>
           {operatorIds.length > 0 && (
             <p className="text-sm text-green-700 mt-2">
-              ✅ W tej miejscowości działa {operatorIds.length} operatorów z internetem kablowym
+              W tej miejscowosci dziala {operatorIds.length} operatorow z internetem kablowym
             </p>
           )}
         </div>
 
-        {/* FILTRY + LISTA */}
         <OffersFilters 
           offers={serializedOffers} 
           operators={operators}
-          miejscowosc={miejscowoscData.miejscowosc}
+          miejscowosc={miejscowoscData.miejscowosc || ''}
           miejscowoscSlug={slugDecoded}
+          simc={miejscowoscData.simc}
         />
       </div>
     </div>
@@ -114,15 +103,15 @@ export async function generateMetadata({ params }: Props) {
   
   const miejscowoscData = await prisma.polska.findFirst({
     where: { slug: slugDecoded },
-    select: { miejscowosc: true, powiat: true }
+    select: { miejscowosc: true }
   });
 
   if (!miejscowoscData) {
-    return { title: 'Miejscowość nie znaleziona' };
+    return { title: 'Miejscowosc nie znaleziona' };
   }
 
   return {
-    title: `Internet ${miejscowoscData.miejscowosc} - Porównaj oferty | Porównywarka`,
-    description: `Sprawdź dostępne oferty internetu w ${miejscowoscData.miejscowosc}. Porównaj ceny, prędkości i operatorów. Znajdź najlepszy internet dla siebie.`
+    title: `Internet ${miejscowoscData.miejscowosc} - Porownaj oferty | Porowywarka`,
+    description: `Sprawdz dostepne oferty internetu w ${miejscowoscData.miejscowosc}. Porownaj ceny, predkosci i operatorow. Znajdz najlepszy internet dla siebie.`
   };
 }

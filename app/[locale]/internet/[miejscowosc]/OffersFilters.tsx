@@ -7,9 +7,10 @@ interface Props {
   operators: { id: number; nazwa: string; slug: string; logo_url?: string }[];
   miejscowosc: string;
   miejscowoscSlug: string;
+  simc: string;
 }
 
-export default function OffersFilters({ offers, operators, miejscowosc, miejscowoscSlug }: Props) {
+export default function OffersFilters({ offers, operators, miejscowosc, miejscowoscSlug, simc }: Props) {
   const [selectedOperator, setSelectedOperator] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc' | 'speed-desc'>('default');
   const [page, setPage] = useState(1);
@@ -42,7 +43,6 @@ export default function OffersFilters({ offers, operators, miejscowosc, miejscow
 
   return (
     <div>
-      {/* FILTRY */}
       <div className="flex flex-wrap gap-4 mb-6 p-4 bg-white rounded-xl shadow-sm">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Operator</label>
@@ -66,9 +66,9 @@ export default function OffersFilters({ offers, operators, miejscowosc, miejscow
             className="px-4 py-2 border border-gray-300 rounded-lg bg-white min-w-[180px] text-gray-900"
           >
             <option value="default">Rekomendowane</option>
-            <option value="price-asc">Cena: od najniższej</option>
-            <option value="price-desc">Cena: od najwyższej</option>
-            <option value="speed-desc">Prędkość: od najszybszej</option>
+            <option value="price-asc">Cena: od najnizszej</option>
+            <option value="price-desc">Cena: od najwyzszej</option>
+            <option value="speed-desc">Predkosc: od najszybszej</option>
           </select>
         </div>
 
@@ -79,7 +79,6 @@ export default function OffersFilters({ offers, operators, miejscowosc, miejscow
         </div>
       </div>
 
-      {/* LISTA OFERT */}
       <div className="space-y-4">
         {paginatedOffers.map((offer) => (
           <OfferCardItem 
@@ -87,11 +86,11 @@ export default function OffersFilters({ offers, operators, miejscowosc, miejscow
             offer={offer} 
             miejscowosc={miejscowosc}
             miejscowoscSlug={miejscowoscSlug}
+            simc={simc}
           />
         ))}
       </div>
 
-      {/* PAGINACJA */}
       {totalPages > 1 && (
         <div className="mt-8 flex justify-center gap-2">
           <button
@@ -99,7 +98,7 @@ export default function OffersFilters({ offers, operators, miejscowosc, miejscow
             disabled={page === 1}
             className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-100 bg-white"
           >
-            ← Poprzednia
+            Poprzednia
           </button>
           <span className="px-4 py-2 text-gray-700">
             Strona {page} z {totalPages}
@@ -109,31 +108,30 @@ export default function OffersFilters({ offers, operators, miejscowosc, miejscow
             disabled={page === totalPages}
             className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-100 bg-white"
           >
-            Następna →
+            Nastepna
           </button>
         </div>
       )}
 
       {paginatedOffers.length === 0 && (
         <div className="p-12 text-center bg-white rounded-xl">
-          <p className="text-gray-600 text-lg">Brak ofert spełniających kryteria</p>
+          <p className="text-gray-600 text-lg">Brak ofert spelniajacych kryteria</p>
         </div>
       )}
     </div>
   );
 }
 
-function OfferCardItem({ offer, miejscowosc, miejscowoscSlug }: { offer: any; miejscowosc: string; miejscowoscSlug: string }) {
+function OfferCardItem({ offer, miejscowosc, miejscowoscSlug, simc }: { offer: any; miejscowosc: string; miejscowoscSlug: string; simc: string }) {
   const isMobile = offer.typ_polaczenia === 'komorkowe';
-const offerUrl = `/oferta/${offer.operator.slug}/${offer.custom_url || offer.id}`;
-  const addressParam = `?adres=${encodeURIComponent(`${miejscowosc}|||${miejscowoscSlug}`)}`;
+  const offerUrl = `/oferta/${offer.operator.slug}/${offer.custom_url || offer.id}`;
+  const addressParam = `?adres=${encodeURIComponent(`${miejscowosc}|||${miejscowoscSlug}|${simc}`)}`;
   
   return (
     <div className={`p-5 bg-white rounded-2xl border-2 ${
       offer.wyrozoniona ? 'border-yellow-400 shadow-lg' : 'border-gray-200'
     } hover:shadow-md transition-shadow`}>
       <div className="flex items-center gap-4 flex-wrap md:flex-nowrap">
-        {/* LOGO OPERATORA */}
         <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden">
           {offer.operator?.logo_url ? (
             <img 
@@ -148,22 +146,21 @@ const offerUrl = `/oferta/${offer.operator.slug}/${offer.custom_url || offer.id}
           )}
         </div>
 
-        {/* INFO O OFERCIE */}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap gap-2 mb-1">
             {offer.wyrozoniona && (
               <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">
-                ⭐ WYRÓŻNIONA
+                WYROZONIONA
               </span>
             )}
             {offer.lokalna && (
               <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-xs font-bold rounded">
-                📍 LOKALNA
+                LOKALNA
               </span>
             )}
             {isMobile && (
               <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-bold rounded">
-                📶 MOBILNA
+                MOBILNA
               </span>
             )}
           </div>
@@ -178,7 +175,7 @@ const offerUrl = `/oferta/${offer.operator.slug}/${offer.custom_url || offer.id}
             </div>
             <div>
               <p className="text-xl font-black text-gray-900">{offer.upload_mbps} Mb/s</p>
-              <p className="text-xs text-gray-500">wysyłanie</p>
+              <p className="text-xs text-gray-500">wysylanie</p>
             </div>
             {offer.technologia && (
               <div>
@@ -195,13 +192,12 @@ const offerUrl = `/oferta/${offer.operator.slug}/${offer.custom_url || offer.id}
           </div>
         </div>
 
-        {/* CENA I PRZYCISKI */}
         <div className="flex-shrink-0 text-right w-full md:w-auto mt-4 md:mt-0">
           <div className="mb-3">
             <p className="text-3xl font-black text-gray-900">
-              {parseFloat(offer.abonament).toFixed(0)} <span className="text-lg">zł</span>
+              {parseFloat(offer.abonament).toFixed(0)} <span className="text-lg">zl</span>
             </p>
-            <p className="text-sm text-gray-500">/miesiąc</p>
+            <p className="text-sm text-gray-500">/miesiac</p>
           </div>
           
           <div className="flex flex-col gap-2">
@@ -211,11 +207,14 @@ const offerUrl = `/oferta/${offer.operator.slug}/${offer.custom_url || offer.id}
             >
               Kontakt z {offer.operator?.nazwa}
             </Link>
+            <a href="tel:532274808" className="text-xs text-gray-500 hover:text-gray-700 text-center">
+              lub zadzwon: 532 274 808
+            </a>
             <Link
-              href={`${offerUrl}?info=1${addressParam.replace('?', '&')}`}
+              href={`${offerUrl}?info=1&adres=${encodeURIComponent(`${miejscowosc}|||${miejscowoscSlug}|${simc}`)}`}
               className="inline-block px-5 py-2 text-blue-600 font-medium hover:text-blue-800 transition-colors text-center text-sm"
             >
-              Dowiedz się więcej
+              Dowiedz sie wiecej
             </Link>
           </div>
         </div>

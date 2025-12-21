@@ -548,3 +548,13 @@ model OperatorCoverage {
   @@index([operator_id])
   @@map("operator_coverage")
 }
+model MiejscowosciSlug {
+  id          Int     @id @default(autoincrement())
+  miejscowosc String
+  simc        String
+  slug        String  @unique
+  gmina       String?
+  adresy      Int?
+  
+  @@map("miejscowosci_slug")
+}

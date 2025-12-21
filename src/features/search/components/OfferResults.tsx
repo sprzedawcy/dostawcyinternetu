@@ -191,8 +191,7 @@ export default function OfferResults({ results, onClose }: Props) {
 
 function OfferCard({ offer }: { offer: any }) {
   const isMobile = offer.typ_polaczenia === 'komorkowe';
-  const offerUrl = offer.custom_url ? `/oferta/${offer.custom_url}` : `/oferta/${offer.id}`;
-  
+const offerUrl = `/oferta/${offer.operator?.slug}/${offer.custom_url || offer.id}`;
   return (
     <div className={`p-5 bg-white rounded-2xl border-2 ${offer.wyrozoniona ? 'border-yellow-400 shadow-lg' : 'border-gray-200'} hover:shadow-md transition-shadow`}>
       <div className="flex items-center gap-4">

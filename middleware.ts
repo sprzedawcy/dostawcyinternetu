@@ -3,17 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { routing } from './i18n/routing';
 
-// Middleware next-intl
 const intlMiddleware = createMiddleware(routing);
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Ścieżki które omijają i18n (login, admin, api)
-  const publicPaths = ['/login', '/admin', '/api'];
-  const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
+  // Ścieżki które omijają i18n
+  const bypassPaths = ['/login', '/admin', '/api', '/_next', '/favicon'];
+  const shouldBypass = bypassPaths.some(path => pathname.startsWith(path));
 
-  // 2. Ochrona /admin przed nieautoryzowanym dostępem
+  // Ochrona /admin
   if (pathname.startsWith('/admin')) {
     const token = await getToken({
       req: request,
@@ -23,20 +22,20 @@ export async function middleware(request: NextRequest) {
     if (!token) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
+    return NextResponse.next();
   }
 
-  // 3. Dla wszystkich innych ścieżek - użyj next-intl
-  if (!isPublicPath) {
-    return intlMiddleware(request);
+  // Bypass dla innych ścieżek systemowych
+  if (shouldBypass) {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  // Dla reszty - i18n middleware
+  return intlMiddleware(request);
 }
 
 export const config = {
   matcher: [
     '/((?!_next|.*\\..*).*)',
-    '/',
-    '/(pl|en|ua)/:path*'
   ]
 };

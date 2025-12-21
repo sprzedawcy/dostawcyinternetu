@@ -196,7 +196,7 @@ function OfferCard({ offer, address }: { offer: any; address: any }) {
   const addressParam = address 
     ? `?adres=${encodeURIComponent(`${address.miejscowosc || ''}|${address.ulica || ''}|${address.nr || ''}|${address.slug || ''}`)}` 
     : '';
-  const offerUrl = `/oferta/${offer.operator?.slug}/${offer.custom_url || offer.id}${addressParam}`;
+  const offerUrl = `/internet/${offer.operator?.slug}/${offer.custom_url || offer.id}${addressParam}`;
   
   return (
     <div className={`p-5 bg-white rounded-2xl border-2 ${offer.wyrozoniona ? 'border-yellow-400 shadow-lg' : 'border-gray-200'} hover:shadow-md transition-shadow`}>

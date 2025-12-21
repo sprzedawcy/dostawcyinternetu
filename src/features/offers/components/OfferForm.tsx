@@ -185,7 +185,7 @@ export default function OfferForm({ offer, operators, mode }: Props) {
           </button>
         </div>
         <p className="text-xs text-gray-500 mt-1">
-          URL w pasku przeglądarki: /oferta/{customUrl || "..."}
+          URL w pasku przeglądarki: /internet/{customUrl || "..."}
         </p>
       </div>
 
@@ -545,7 +545,7 @@ export default function OfferForm({ offer, operators, mode }: Props) {
                 >
                   <option value="">Wybierz ofertę...</option>
                   {activeOffers.map((o) => (
-                    <option key={o.id} value={`/oferta/${o.custom_url || o.id}`}>
+                    <option key={o.id} value={`/internet/${o.custom_url || o.id}`}>
                       {o.nazwa}
                     </option>
                   ))}
@@ -556,7 +556,7 @@ export default function OfferForm({ offer, operators, mode }: Props) {
                     type="text"
                     value={redirectUrl}
                     onChange={(e) => setRedirectUrl(e.target.value)}
-                    placeholder="/oferta/inna-oferta"
+                    placeholder="/internet/inna-oferta"
                     className="w-full px-4 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500"
                     required
                   />

@@ -4,12 +4,12 @@ import Link from "next/link";
 import OffersFilters from "./OffersFilters";
 
 interface Props {
-  params: Promise<{ miejscowosc: string }>;
+  slug: string;
+  locale: string;
 }
 
-export default async function MiejscowoscPage({ params }: Props) {
-  const { miejscowosc } = await params;
-  const slugDecoded = decodeURIComponent(miejscowosc);
+export default async function MiejscowoscPage({ slug, locale }: Props) {
+  const slugDecoded = decodeURIComponent(slug);
   
   const miejscowoscData = await prisma.polska.findFirst({
     where: { slug: slugDecoded },
@@ -95,23 +95,4 @@ export default async function MiejscowoscPage({ params }: Props) {
       </div>
     </div>
   );
-}
-
-export async function generateMetadata({ params }: Props) {
-  const { miejscowosc } = await params;
-  const slugDecoded = decodeURIComponent(miejscowosc);
-  
-  const miejscowoscData = await prisma.polska.findFirst({
-    where: { slug: slugDecoded },
-    select: { miejscowosc: true }
-  });
-
-  if (!miejscowoscData) {
-    return { title: 'Miejscowosc nie znaleziona' };
-  }
-
-  return {
-    title: `Internet ${miejscowoscData.miejscowosc} - Porownaj oferty | Porowywarka`,
-    description: `Sprawdz dostepne oferty internetu w ${miejscowoscData.miejscowosc}. Porownaj ceny, predkosci i operatorow. Znajdz najlepszy internet dla siebie.`
-  };
 }

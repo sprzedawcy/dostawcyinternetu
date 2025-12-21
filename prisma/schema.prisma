@@ -333,6 +333,12 @@ model Operator {
   opinie          Opinia[]
   coverage        OperatorCoverage[]  
   
+  speedtests     OperatorSpeedtest[]
+  priceHistory   OperatorPriceHistory[]
+  outages        OperatorOutage[]
+  faq            OperatorFaq[]
+  promotions     OperatorPromotion[]
+
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
@@ -576,4 +582,113 @@ model OperatorCoverage {
   @@index([simc, id_ulicy, nr])
   @@index([operator_id])
   @@map("operator_coverage")
+}
+
+// ========== PROFIL OPERATORA - ROZSZERZENIA ==========
+
+model OperatorSpeedtest {
+  id            Int      @id @default(autoincrement())
+  operator_id   Int
+  operator      Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+  
+  miejscowosc   String?
+  simc          String?  @db.VarChar(7)
+  
+  ping_ms       Decimal  @db.Decimal(6, 2)
+  download_mbps Decimal  @db.Decimal(8, 2)
+  upload_mbps   Decimal  @db.Decimal(8, 2)
+  jitter_ms     Decimal? @db.Decimal(6, 2)
+  
+  source        String?  @db.VarChar(50)
+  user_ip       String?
+  
+  created_at    DateTime @default(now())
+
+  @@index([operator_id])
+  @@index([simc])
+  @@map("operator_speedtests")
+}
+
+model OperatorPriceHistory {
+  id            Int      @id @default(autoincrement())
+  operator_id   Int
+  operator      Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+  
+  oferta_id     Int?
+  nazwa_oferty  String?
+  
+  abonament     Decimal  @db.Decimal(10, 2)
+  download_mbps Int?
+  
+  data_od       DateTime
+  data_do       DateTime?
+  
+  created_at    DateTime @default(now())
+
+  @@index([operator_id])
+  @@index([data_od])
+  @@map("operator_price_history")
+}
+
+model OperatorOutage {
+  id            Int       @id @default(autoincrement())
+  operator_id   Int
+  operator      Operator  @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+  
+  miejscowosc   String?
+  simc          String?   @db.VarChar(7)
+  
+  opis          String    @db.Text
+  data_start    DateTime
+  data_koniec   DateTime?
+  
+  status        String    @default("aktywna")
+  
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  @@index([operator_id])
+  @@index([status])
+  @@map("operator_outages")
+}
+
+model OperatorFaq {
+  id            Int      @id @default(autoincrement())
+  operator_id   Int
+  operator      Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+  
+  pytanie       String
+  odpowiedz     String   @db.Text
+  kolejnosc     Int      @default(0)
+  
+  aktywne       Boolean  @default(true)
+  
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([operator_id])
+  @@map("operator_faq")
+}
+
+model OperatorPromotion {
+  id            Int       @id @default(autoincrement())
+  operator_id   Int
+  operator      Operator  @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+  
+  tytul         String
+  opis          String    @db.Text
+  kod           String?
+  rabat         String?
+  
+  data_start    DateTime
+  data_koniec   DateTime?
+  
+  aktywna       Boolean   @default(true)
+  
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  @@index([operator_id])
+  @@index([aktywna])
+  @@map("operator_promotions")
 }

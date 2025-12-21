@@ -5,18 +5,27 @@ import AddressValidator from "./AddressValidator";
 import FullAddressSearch from "./FullAddressSearch";
 import RewardsModule from "./RewardsModule";
 
+interface AddressData {
+  miejscowosc: string;
+  ulica?: string;
+  nr?: string;
+  miejscowoscSlug?: string;
+  simc?: string;
+  hpCount?: number;
+}
+
 interface Props {
   offer: any;
-  addressData: { miejscowosc: string; ulica?: string; nr?: string; miejscowoscSlug?: string; simc?: string } | null;
+  addressData: AddressData | null;
 }
 
 export default function OfferPageClient({ offer, addressData: initialAddressData }: Props) {
-  const [addressData, setAddressData] = useState(initialAddressData);
+  const [addressData, setAddressData] = useState<AddressData | null>(initialAddressData);
   
   const hasAnyAddress = addressData?.miejscowosc;
   const isAddressComplete = addressData?.miejscowosc && addressData?.nr;
 
-  const handleAddressComplete = (newAddress: { miejscowosc: string; ulica: string; nr: string; simc?: string; miejscowoscSlug?: string }) => {
+  const handleAddressComplete = (newAddress: AddressData) => {
     setAddressData({
       ...addressData,
       ...newAddress

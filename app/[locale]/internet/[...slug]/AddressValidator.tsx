@@ -9,7 +9,7 @@ interface Props {
   miejscowoscSlug: string;
   simc: string;
   offer: any;
-  onAddressComplete: (address: { miejscowosc: string; ulica: string; nr: string }) => void;
+  onAddressComplete: (address: { miejscowosc: string; ulica: string; nr: string; hpCount?: number }) => void;
 }
 
 export default function AddressValidator({ miejscowosc, miejscowoscSlug, simc, offer, onAddressComplete }: Props) {
@@ -102,14 +102,20 @@ export default function AddressValidator({ miejscowosc, miejscowoscSlug, simc, o
       if (isOfferAvailable) {
         setCheckResult('available');
         
+        const operatorData = results.address?.operators?.find(
+          (op: any) => op.slug === offer.operator?.slug
+        );
+        const hpCount = operatorData?.hp_count || null;
+        
         const newAddress = {
           miejscowosc,
           ulica: selectedStreet?.ulica || '',
-          nr: selectedNumber.nr
+          nr: selectedNumber.nr,
+          hpCount
         };
         
         const newAdresParam = encodeURIComponent(
-          `${miejscowosc}|${newAddress.ulica}|${newAddress.nr}|${miejscowoscSlug}|${simc}`
+          `${miejscowosc}|${newAddress.ulica}|${newAddress.nr}|${miejscowoscSlug}|${simc}|${hpCount || ''}`
         );
         
         const newUrl = `${pathname}?adres=${newAdresParam}`;
@@ -131,7 +137,12 @@ export default function AddressValidator({ miejscowosc, miejscowoscSlug, simc, o
 
   const handleGoToResults = () => {
     const id_ulicy = selectedStreet?.id_ulicy || '00000';
-    router.push(`/?simc=${simc}&id_ulicy=${id_ulicy}&nr=${selectedNumber?.nr || ''}`);
+    const params = new URLSearchParams({
+      simc: simc,
+      id_ulicy: id_ulicy,
+      nr: selectedNumber?.nr || ''
+    });
+    router.push(`/?${params.toString()}`);
   };
 
   if (checkResult === 'available') {
@@ -216,23 +227,15 @@ export default function AddressValidator({ miejscowosc, miejscowoscSlug, simc, o
 
         {hasStreets && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ulica
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Ulica</label>
             {selectedStreet ? (
               <div className="relative p-4 bg-green-100 border-2 border-green-500 rounded-xl">
                 <div className="font-bold text-green-900">{selectedStreet.ulica}</div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedStreet(null);
-                    setSelectedNumber(null);
-                    setNumberQuery('');
-                  }}
+                  onClick={() => { setSelectedStreet(null); setSelectedNumber(null); setNumberQuery(''); }}
                   className="absolute top-2 right-2 w-7 h-7 bg-red-600 text-white rounded-full font-bold hover:bg-red-700"
-                >
-                  ✕
-                </button>
+                >✕</button>
               </div>
             ) : (
               <div className="relative">
@@ -254,15 +257,9 @@ export default function AddressValidator({ miejscowosc, miejscowoscSlug, simc, o
                       <button
                         key={`${street.id_ulicy}-${index}`}
                         type="button"
-                        onClick={() => {
-                          setSelectedStreet(street);
-                          setStreets([]);
-                          setStreetQuery('');
-                        }}
+                        onClick={() => { setSelectedStreet(street); setStreets([]); setStreetQuery(''); }}
                         className="w-full p-3 text-left hover:bg-orange-100 border-b border-gray-200 last:border-0 font-medium text-gray-900"
-                      >
-                        {street.ulica}
-                      </button>
+                      >{street.ulica}</button>
                     ))}
                   </div>
                 )}
@@ -272,22 +269,15 @@ export default function AddressValidator({ miejscowosc, miejscowoscSlug, simc, o
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Numer budynku *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Numer budynku *</label>
           {selectedNumber ? (
             <div className="relative p-4 bg-green-100 border-2 border-green-500 rounded-xl">
               <div className="font-bold text-green-900 text-center text-2xl">{selectedNumber.nr}</div>
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedNumber(null);
-                  setNumberQuery('');
-                }}
+                onClick={() => { setSelectedNumber(null); setNumberQuery(''); }}
                 className="absolute top-2 right-2 w-7 h-7 bg-red-600 text-white rounded-full font-bold hover:bg-red-700"
-              >
-                ✕
-              </button>
+              >✕</button>
             </div>
           ) : (
             <div className="relative">
@@ -311,15 +301,9 @@ export default function AddressValidator({ miejscowosc, miejscowoscSlug, simc, o
                       <button
                         key={`${num.id}-${index}`}
                         type="button"
-                        onClick={() => {
-                          setSelectedNumber(num);
-                          setNumbers([]);
-                          setNumberQuery('');
-                        }}
+                        onClick={() => { setSelectedNumber(num); setNumbers([]); setNumberQuery(''); }}
                         className="p-2 bg-gray-100 hover:bg-orange-500 hover:text-white rounded font-bold text-sm text-gray-900"
-                      >
-                        {num.nr}
-                      </button>
+                      >{num.nr}</button>
                     ))}
                   </div>
                 </div>

@@ -1,3 +1,7 @@
+#!/bin/bash
+echo "Aktualizuję ContactForm z nową logiką HP..."
+
+cat > app/\[locale\]/internet/\[...slug\]/ContactForm.tsx << 'EOFFILE'
 "use client";
 import { useState } from "react";
 
@@ -54,6 +58,15 @@ export default function ContactForm({ offer, addressData, onSubmitSuccess }: Pro
     return addr;
   };
 
+  // Sprawdź czy to dom jednorodzinny (HP = 1 lub 2, nie 0)
+  const isSmallBuilding = addressData?.hpCount && (addressData.hpCount === 1 || addressData.hpCount === 2);
+  
+  // Sprawdź czy są dane dla domów
+  const hasDomData = offer.abonament_dom || offer.instalacja_dom || offer.aktywacja_dom || offer.dom_blok_tekst;
+  
+  // Pokaż box gdy HP = 1 lub 2 i są jakiekolwiek dane dla domów
+  const showDomInfo = isSmallBuilding && hasDomData;
+
   if (submitted) {
     return (
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden border-[3px] border-green-600" id="kontakt">
@@ -97,10 +110,39 @@ export default function ContactForm({ offer, addressData, onSubmitSuccess }: Pro
           </div>
         )}
 
+        {showDomInfo && (
+          <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-xl">
+            <div className="flex items-start gap-3">
+              <span className="text-xl">🏠</span>
+              <div className="flex-1">
+                <p className="font-bold text-yellow-800 text-sm mb-2">Ceny dla domow jednorodzinnych</p>
+                
+                {(offer.abonament_dom || offer.instalacja_dom || offer.aktywacja_dom) && (
+                  <div className="space-y-1 text-sm text-yellow-800">
+                    {offer.abonament_dom && (
+                      <p>Abonament: <strong>{parseFloat(offer.abonament_dom).toFixed(0)} zl/mies.</strong></p>
+                    )}
+                    {offer.instalacja_dom && (
+                      <p>Instalacja: <strong>{parseFloat(offer.instalacja_dom).toFixed(0)} zl</strong></p>
+                    )}
+                    {offer.aktywacja_dom && (
+                      <p>Aktywacja: <strong>{parseFloat(offer.aktywacja_dom).toFixed(0)} zl</strong></p>
+                    )}
+                  </div>
+                )}
+                
+                {offer.dom_blok_tekst && (
+                  <p className="text-xs text-yellow-700 mt-2">{offer.dom_blok_tekst}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div><label className="block text-sm font-medium text-gray-700 mb-1">Imie i nazwisko *</label><input type="text" required value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Jan Kowalski" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900" /></div>
         <div><label className="block text-sm font-medium text-gray-700 mb-1">Telefon *</label><input type="tel" required value={formData.phone} onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))} placeholder="532 274 808" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900" /></div>
         <div><label className="block text-sm font-medium text-gray-700 mb-1">Email *</label><input type="email" required value={formData.email} onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))} placeholder="jan@example.com" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900" /></div>
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Uwagi dla operatora (opcjonalnie)</label><textarea value={formData.uwagi} onChange={(e) => setFormData(prev => ({ ...prev, uwagi: e.target.value }))} placeholder="Np. preferowane godziny kontaktu, pytania..." rows={3} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900" /></div>
+        <div><label className="block text-sm font-medium text-gray-700 mb-1">Uwagi dla operatora (opcjonalnie)</label><textarea value={formData.uwagi} onChange={(e) => setFormData(prev => ({ ...prev, uwagi: e.target.value }))} placeholder="Np. preferowane godziny kontaktu, pytania..." rows={3} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900" /></textarea></div>
 
         <button type="submit" disabled={loading} className="w-full py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors disabled:bg-gray-400 text-lg">{loading ? 'Wysylam...' : 'Zamow'}</button>
         <p className="text-xs text-gray-500 text-center">Wyrazam zgode na kontakt telefoniczny i mailowy w celu przedstawienia oferty</p>
@@ -120,3 +162,8 @@ export default function ContactForm({ offer, addressData, onSubmitSuccess }: Pro
     </div>
   );
 }
+EOFFILE
+
+echo "✅ ContactForm.tsx zaktualizowany!"
+echo ""
+echo "Logika: HP = 1 lub 2 (nie 0) + są dane dla domów → pokazuje box"

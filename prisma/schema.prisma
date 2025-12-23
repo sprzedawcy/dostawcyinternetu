@@ -22,12 +22,12 @@ model SearchMiejscowosc {
 }
 
 model SearchUlica {
-  id           Int    @id @default(autoincrement())
-  id_ulicy     String @db.VarChar(10)
+  id           Int     @id @default(autoincrement())
+  id_ulicy     String  @db.VarChar(10)
   ulica        String
   ulica_norm   String
   miasto_nazwa String
-  teryt_powiat String @db.VarChar(4)
+  teryt_powiat String  @db.VarChar(4)
   simc         String? @db.VarChar(7)
 
   @@index([teryt_powiat, ulica_norm])
@@ -205,6 +205,8 @@ model miejscowosci_seo {
   ai_intent               String[]
   rich_snippet_type       String?   @db.VarChar(50)
   schema_graph            Json?
+  article_text            String?
+  blog_tags               Json?
 
   @@index([nazwa], map: "idx_seo_nazwa")
   @@index([wojewodztwo], map: "idx_seo_wojewodztwo")
@@ -320,138 +322,138 @@ model SystemLog {
 // ========== CMS - OPERATORZY I OFERTY ==========
 
 model Operator {
-  id              Int      @id @default(autoincrement())
-  nazwa           String   @unique
-  slug            String   @unique
-  opis            String?  @db.Text
+  id              Int     @id @default(autoincrement())
+  nazwa           String  @unique
+  slug            String  @unique
+  opis            String? @db.Text
   logo_url        String?
   email_handlowca String?
-  
-  aktywny         Boolean  @default(true)
-  redirect_url    String?
-  
+
+  aktywny      Boolean @default(true)
+  redirect_url String?
+
   // SEO
   meta_title       String?  @db.VarChar(70)
   meta_description String?  @db.VarChar(160)
   keywords         String[]
-  
+
   // Kontakt i info
-  strona_www       String?  @db.VarChar(255)
-  telefon          String?  @db.VarChar(20)
-  typ              String?  @default("krajowy") @db.VarChar(20)
-  technologie      String[]
-  regiony          String[]
-  
+  strona_www  String?  @db.VarChar(255)
+  telefon     String?  @db.VarChar(20)
+  typ         String?  @default("krajowy") @db.VarChar(20)
+  technologie String[]
+  regiony     String[]
+
   // Relacje
-  oferty          Oferta[]
-  leady           Lead[]
-  zasiegi         ZasiegOperatora[]
-  opinie          Opinia[]
-  coverage        OperatorCoverage[]  
-  artykuly        Artykul[]
+  oferty   Oferta[]
+  leady    Lead[]
+  zasiegi  ZasiegOperatora[]
+  opinie   Opinia[]
+  coverage OperatorCoverage[]
+  artykuly Artykul[]
 
-  
-  speedtests     OperatorSpeedtest[]
-  priceHistory   OperatorPriceHistory[]
-  outages        OperatorOutage[]
-  faq            OperatorFaq[]
-  promotions     OperatorPromotion[]
+  speedtests   OperatorSpeedtest[]
+  priceHistory OperatorPriceHistory[]
+  outages      OperatorOutage[]
+  faq          OperatorFaq[]
+  promotions   OperatorPromotion[]
 
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+  operatorLocations OperatorLocation[]
 
   @@map("operatorzy")
 }
 
 model Oferta {
-  id                    Int      @id @default(autoincrement())
-  nazwa                 String
-  custom_url            String?  @unique
-  redirect_url          String?
-  opis                  String?  @db.Text
-  
-  typ_uslugi            String?  @default("stacjonarny")
-  abonament             Decimal  @db.Decimal(10, 2)
-  instalacja            Decimal? @db.Decimal(10, 2)
-  aktywacja             Decimal? @db.Decimal(10, 2)
-  
-  abonament_dom         Decimal? @db.Decimal(10, 2)
-  instalacja_dom        Decimal? @db.Decimal(10, 2)
-  aktywacja_dom         Decimal? @db.Decimal(10, 2)
-  
+  id           Int     @id @default(autoincrement())
+  nazwa        String
+  custom_url   String? @unique
+  redirect_url String?
+  opis         String? @db.Text
+
+  typ_uslugi String?  @default("stacjonarny")
+  abonament  Decimal  @db.Decimal(10, 2)
+  instalacja Decimal? @db.Decimal(10, 2)
+  aktywacja  Decimal? @db.Decimal(10, 2)
+
+  abonament_dom  Decimal? @db.Decimal(10, 2)
+  instalacja_dom Decimal? @db.Decimal(10, 2)
+  aktywacja_dom  Decimal? @db.Decimal(10, 2)
+
   zobowiazanie_miesiace Int?
   download_mbps         Int
   upload_mbps           Int
   technologia           String?
   wifi                  String?
-  
-  kategoria             String
-  
-  wyrozoniona           Boolean  @default(false)
-  lokalna               Boolean  @default(false)
-  dom_blok_info         Boolean  @default(false)
-  dom_blok_tekst        String?  @db.Text
-  
-  operator_id           Int
-  operator              Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  urzadzenia            UrządzenieKoncowe[]
-  lokalizacje           OfertaLokalizacja[]
-  programy_tv           ProgramTV[]
-  opinie                Opinia[]
-  leady                 Lead[]
-  
-  aktywna               Boolean  @default(true)
-  
-  typ_polaczenia        String   @default("kablowe")
-  priorytet             Int      @default(0)
-  
-  created_at            DateTime @default(now())
-  updated_at            DateTime @updatedAt
+
+  kategoria String
+
+  wyrozoniona    Boolean @default(false)
+  lokalna        Boolean @default(false)
+  dom_blok_info  Boolean @default(false)
+  dom_blok_tekst String? @db.Text
+
+  operator_id Int
+  operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  urzadzenia  UrządzenieKoncowe[]
+  lokalizacje OfertaLokalizacja[]
+  programy_tv ProgramTV[]
+  opinie      Opinia[]
+  leady       Lead[]
+
+  aktywna Boolean @default(true)
+
+  typ_polaczenia String @default("kablowe")
+  priorytet      Int    @default(0)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@map("oferty")
 }
 
 model UrządzenieKoncowe {
-  id          Int      @id @default(autoincrement())
-  oferta_id   Int
-  oferta      Oferta   @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
-  
+  id        Int    @id @default(autoincrement())
+  oferta_id Int
+  oferta    Oferta @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
+
   typ         String
   nazwa       String
-  opis        String?  @db.Text
+  opis        String? @db.Text
   zdjecie_url String?
-  
-  created_at  DateTime @default(now())
+
+  created_at DateTime @default(now())
 
   @@map("urzadzenia_koncowe")
 }
 
 model OfertaLokalizacja {
-  id          Int      @id @default(autoincrement())
-  oferta_id   Int
-  oferta      Oferta   @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
-  
-  typ         String
-  kod         String
-  nazwa       String
-  
-  created_at  DateTime @default(now())
+  id        Int    @id @default(autoincrement())
+  oferta_id Int
+  oferta    Oferta @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
+
+  typ   String
+  kod   String
+  nazwa String
+
+  created_at DateTime @default(now())
 
   @@map("oferty_lokalizacje")
 }
 
 model ProgramTV {
-  id          Int      @id @default(autoincrement())
-  oferta_id   Int
-  oferta      Oferta   @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
-  
-  nazwa       String
-  kategoria   String?
-  logo_url    String?
-  pozycja     Int      @default(0)
-  
-  created_at  DateTime @default(now())
+  id        Int    @id @default(autoincrement())
+  oferta_id Int
+  oferta    Oferta @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
+
+  nazwa     String
+  kategoria String?
+  logo_url  String?
+  pozycja   Int     @default(0)
+
+  created_at DateTime @default(now())
 
   @@map("programy_tv")
 }
@@ -460,21 +462,21 @@ model ZasiegOperatora {
   id          Int      @id @default(autoincrement())
   operator_id Int
   operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
+
   teryt       String
   miejscowosc String
   simc        String?
   ulica       String?
   id_ulicy    String?
   nr          String?
-  
-  typ         String
-  
-  aktywny     Boolean  @default(true)
-  notatka     String?  @db.Text
-  
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+
+  typ String
+
+  aktywny Boolean @default(true)
+  notatka String? @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@unique([operator_id, teryt])
   @@index([operator_id])
@@ -483,28 +485,28 @@ model ZasiegOperatora {
 }
 
 model Opinia {
-  id            Int      @id @default(autoincrement())
-  
-  operator_id   Int?
-  operator      Operator? @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  oferta_id     Int?
-  oferta        Oferta?   @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
-  
-  autor         String
-  email         String?
-  ocena         Int
-  tytul         String?
-  tresc         String   @db.Text
-  
-  widoczna      Boolean  @default(false)
-  zatwierdzil   String?
-  
-  ip_address    String?
-  user_agent    String?  @db.Text
-  
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id Int @id @default(autoincrement())
+
+  operator_id Int?
+  operator    Operator? @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  oferta_id Int?
+  oferta    Oferta? @relation(fields: [oferta_id], references: [id], onDelete: Cascade)
+
+  autor String
+  email String?
+  ocena Int
+  tytul String?
+  tresc String  @db.Text
+
+  widoczna    Boolean @default(false)
+  zatwierdzil String?
+
+  ip_address String?
+  user_agent String? @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@index([operator_id])
   @@index([oferta_id])
@@ -513,71 +515,71 @@ model Opinia {
 }
 
 model Lead {
-  id            Int       @id @default(autoincrement())
+  id            Int    @id @default(autoincrement())
   imie_nazwisko String
   telefon       String
   email         String
-  
-  oferta_id     Int?
-  oferta        Oferta?   @relation(fields: [oferta_id], references: [id])
-  
-  operator_id   Int?
-  operator      Operator? @relation(fields: [operator_id], references: [id])
-  
-  miejscowosc   String?
-  ulica         String?
-  nr            String?
-  
+
+  oferta_id Int?
+  oferta    Oferta? @relation(fields: [oferta_id], references: [id])
+
+  operator_id Int?
+  operator    Operator? @relation(fields: [operator_id], references: [id])
+
+  miejscowosc String?
+  ulica       String?
+  nr          String?
+
   // Statusy: nowy, kontakt, umowiony, zainstalowany, rozliczony, spad
-  status        String    @default("nowy")
-  
+  status String @default("nowy")
+
   // Daty dla statusów
   data_kontaktu_plan  DateTime?
   data_umowiony       DateTime?
   data_instalacji     DateTime?
-  miesiac_rozliczenia String?   // np. "2025-01"
-  
+  miesiac_rozliczenia String? // np. "2025-01"
+
   // Powód spad
-  spad_powod    String?   // brak_kontaktu, zadluzenie, brak_sieci, inny
-  
-  notatki       String?   @db.Text
-  zrodlo        String?
-  upominek      String?
-  
+  spad_powod String? // brak_kontaktu, zadluzenie, brak_sieci, inny
+
+  notatki  String? @db.Text
+  zrodlo   String?
+  upominek String?
+
   // Historia kontaktów
-  kontakty      LeadKontakt[]
-  
+  kontakty LeadKontakt[]
+
   // Alert
   ostatni_alert DateTime?
-  
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@map("leady")
 }
 
 model LeadKontakt {
-  id          Int      @id @default(autoincrement())
-  lead_id     Int
-  lead        Lead     @relation(fields: [lead_id], references: [id], onDelete: Cascade)
-  
-  data        DateTime @default(now())
-  uwagi       String?  @db.Text
-  
-  created_at  DateTime @default(now())
+  id      Int  @id @default(autoincrement())
+  lead_id Int
+  lead    Lead @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+
+  data  DateTime @default(now())
+  uwagi String?  @db.Text
+
+  created_at DateTime @default(now())
 
   @@map("leady_kontakty")
 }
 
 model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
+  id            Int     @id @default(autoincrement())
+  email         String  @unique
   password_hash String
   name          String?
-  role          String   @default("admin")
-  
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  role          String  @default("admin")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@map("users")
 }
@@ -586,17 +588,17 @@ model OperatorCoverage {
   id          Int      @id @default(autoincrement())
   operator_id Int
   operator    Operator @relation(fields: [operator_id], references: [id])
-  
-  simc        String   @db.VarChar(7)
-  id_ulicy    String   @db.VarChar(7)
-  nr          String
-  
-  hp_count    Int      @default(0)
-  source      String?  @db.VarChar(50)
-  
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  
+
+  simc     String @db.VarChar(7)
+  id_ulicy String @db.VarChar(7)
+  nr       String
+
+  hp_count Int     @default(0)
+  source   String? @db.VarChar(50)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
   @@unique([operator_id, simc, id_ulicy, nr])
   @@index([simc, id_ulicy, nr])
   @@index([operator_id])
@@ -606,22 +608,26 @@ model OperatorCoverage {
 // ========== PROFIL OPERATORA - ROZSZERZENIA ==========
 
 model OperatorSpeedtest {
-  id            Int      @id @default(autoincrement())
-  operator_id   Int
-  operator      Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  miejscowosc   String?
-  simc          String?  @db.VarChar(7)
-  
+  id          Int      @id @default(autoincrement())
+  operator_id Int
+  operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  miejscowosc String?
+  simc        String? @db.VarChar(7)
+
   ping_ms       Decimal  @db.Decimal(6, 2)
   download_mbps Decimal  @db.Decimal(8, 2)
   upload_mbps   Decimal  @db.Decimal(8, 2)
   jitter_ms     Decimal? @db.Decimal(6, 2)
-  
-  source        String?  @db.VarChar(50)
-  user_ip       String?
-  
-  created_at    DateTime @default(now())
+
+  data_zgloszenia     DateTime?
+  zatwierdzone        Boolean?  @default(false)
+  zgloszenie_user     String?
+
+  source  String? @db.VarChar(50)
+  user_ip String?
+
+  created_at DateTime @default(now())
 
   @@index([operator_id])
   @@index([simc])
@@ -629,20 +635,20 @@ model OperatorSpeedtest {
 }
 
 model OperatorPriceHistory {
-  id            Int      @id @default(autoincrement())
-  operator_id   Int
-  operator      Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  oferta_id     Int?
-  nazwa_oferty  String?
-  
-  abonament     Decimal  @db.Decimal(10, 2)
+  id          Int      @id @default(autoincrement())
+  operator_id Int
+  operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  oferta_id    Int?
+  nazwa_oferty String?
+
+  abonament     Decimal @db.Decimal(10, 2)
   download_mbps Int?
-  
-  data_od       DateTime
-  data_do       DateTime?
-  
-  created_at    DateTime @default(now())
+
+  data_od DateTime
+  data_do DateTime?
+
+  created_at DateTime @default(now())
 
   @@index([operator_id])
   @@index([data_od])
@@ -650,21 +656,21 @@ model OperatorPriceHistory {
 }
 
 model OperatorOutage {
-  id            Int       @id @default(autoincrement())
-  operator_id   Int
-  operator      Operator  @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  miejscowosc   String?
-  simc          String?   @db.VarChar(7)
-  
-  opis          String    @db.Text
-  data_start    DateTime
-  data_koniec   DateTime?
-  
-  status        String    @default("aktywna")
-  
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  id          Int      @id @default(autoincrement())
+  operator_id Int
+  operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  miejscowosc String?
+  simc        String? @db.VarChar(7)
+
+  opis        String    @db.Text
+  data_start  DateTime
+  data_koniec DateTime?
+
+  status String @default("aktywna")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@index([operator_id])
   @@index([status])
@@ -672,40 +678,40 @@ model OperatorOutage {
 }
 
 model OperatorFaq {
-  id            Int      @id @default(autoincrement())
-  operator_id   Int
-  operator      Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  pytanie       String
-  odpowiedz     String   @db.Text
-  kolejnosc     Int      @default(0)
-  
-  aktywne       Boolean  @default(true)
-  
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  operator_id Int
+  operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  pytanie   String
+  odpowiedz String @db.Text
+  kolejnosc Int    @default(0)
+
+  aktywne Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@index([operator_id])
   @@map("operator_faq")
 }
 
 model OperatorPromotion {
-  id            Int       @id @default(autoincrement())
-  operator_id   Int
-  operator      Operator  @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  tytul         String
-  opis          String    @db.Text
-  kod           String?
-  rabat         String?
-  
-  data_start    DateTime
-  data_koniec   DateTime?
-  
-  aktywna       Boolean   @default(true)
-  
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  id          Int      @id @default(autoincrement())
+  operator_id Int
+  operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  tytul String
+  opis  String  @db.Text
+  kod   String?
+  rabat String?
+
+  data_start  DateTime
+  data_koniec DateTime?
+
+  aktywna Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@index([operator_id])
   @@index([aktywna])
@@ -715,37 +721,38 @@ model OperatorPromotion {
 // ========== ZGŁOSZENIA KPO/FERC - "Powiadom mnie o budowie światłowodu" ==========
 
 model KpoLead {
-  id            Int       @id @default(autoincrement())
-  
+  id Int @id @default(autoincrement())
+
   // Adres
-  miejscowosc   String
-  ulica         String?
-  nr            String?
-  simc          String?   @db.VarChar(7)
-  id_ulicy      String?   @db.VarChar(7)
-  
+  miejscowosc String
+  ulica       String?
+  nr          String?
+  simc        String? @db.VarChar(7)
+  id_ulicy    String? @db.VarChar(7)
+
   // Dane kontaktowe
-  imie          String
-  telefon       String
-  email         String?
-  uwagi         String?   @db.Text
-  
+  imie    String
+  telefon String
+  email   String?
+  uwagi   String? @db.Text
+
   // Status: nowy, kontakt, zrealizowany, anulowany
-  status        String    @default("nowy")
-  notatka_admin String?   @db.Text
-  
+  status        String  @default("nowy")
+  notatka_admin String? @db.Text
+
   // Metadata
-  ip_address    String?
-  user_agent    String?   @db.Text
-  
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  ip_address String?
+  user_agent String? @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@index([status])
   @@index([simc])
   @@index([created_at])
   @@map("kpo_leads")
 }
+
 // =====================================================
 // DODAJ DO prisma/schema.prisma
 // Modele dla ui_content i ui_config
@@ -753,15 +760,15 @@ model KpoLead {
 
 // Teksty UI wielojęzyczne
 model UiContent {
-  id          Int       @id @default(autoincrement())
-  key         String    @unique @db.VarChar(100)
-  value_pl    String    @db.Text
-  value_en    String?   @db.Text
-  value_ua    String?   @db.Text
-  category    String?   @db.VarChar(50)
-  description String?   @db.Text
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
+  id          Int      @id @default(autoincrement())
+  key         String   @unique @db.VarChar(100)
+  value_pl    String   @db.Text
+  value_en    String?  @db.Text
+  value_ua    String?  @db.Text
+  category    String?  @db.VarChar(50)
+  description String?  @db.Text
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
   @@index([category])
   @@map("ui_content")
@@ -769,10 +776,10 @@ model UiContent {
 
 // Konfiguracja UI (JSONB)
 model UiConfig {
-  key         String    @id @db.VarChar(100)
+  key         String   @id @db.VarChar(100)
   value       Json
-  description String?   @db.Text
-  updated_at  DateTime  @updatedAt
+  description String?  @db.Text
+  updated_at  DateTime @updatedAt
 
   @@map("ui_config")
 }
@@ -782,106 +789,108 @@ model UiConfig {
 // =====================================================
 
 model KategoriaBlogu {
-  id        Int        @id @default(autoincrement())
-  nazwa     String     @db.VarChar(100)
-  slug      String     @unique @db.VarChar(100)
-  opis      String?
-  kolejnosc Int        @default(0)
-  created_at DateTime  @default(now())
-  
-  artykuly  Artykul[]
-  
+  id         Int      @id @default(autoincrement())
+  nazwa      String   @db.VarChar(100)
+  slug       String   @unique @db.VarChar(100)
+  opis       String?
+  kolejnosc  Int      @default(0)
+  created_at DateTime @default(now())
+
+  artykuly Artykul[]
+
   @@map("kategorie_blogu")
 }
 
 model Tag {
-  id        Int      @id @default(autoincrement())
-  nazwa     String   @db.VarChar(100)
-  slug      String   @unique @db.VarChar(100)
-  typ       String?  @default("ogolny") @db.VarChar(50)
+  id         Int      @id @default(autoincrement())
+  nazwa      String   @db.VarChar(100)
+  slug       String   @unique @db.VarChar(100)
+  typ        String?  @default("ogolny") @db.VarChar(50)
   created_at DateTime @default(now())
-  
-  artykuly  ArtykulTag[]
-  
+
+  artykuly ArtykulTag[]
+
   @@map("tagi")
 }
 
 model Artykul {
-  id              Int       @id @default(autoincrement())
-  
-  tytul           String    @db.VarChar(255)
-  slug            String    @db.VarChar(255)
-  zajawka         String?
-  tresc           String?
-  
-  kategoria_id    Int?
-  kategoria       KategoriaBlogu? @relation(fields: [kategoria_id], references: [id])
-  
-  operator_id     Int?
-  operator        Operator? @relation(fields: [operator_id], references: [id], onDelete: SetNull)
-  
-  miejscowosc_simc String?  @db.VarChar(20)
-  oferta_id       Int?
-  technologia     String?   @db.VarChar(50)
-  
-  thumbnail_url   String?   @db.VarChar(500)
-  og_image_url    String?   @db.VarChar(500)
-  
-  meta_title      String?   @db.VarChar(70)
-  meta_description String?  @db.VarChar(160)
-  
+  id Int @id @default(autoincrement())
+
+  tytul   String  @db.VarChar(255)
+  slug    String  @db.VarChar(255)
+  zajawka String?
+  tresc   String?
+
+  kategoria_id Int?
+  kategoria    KategoriaBlogu? @relation(fields: [kategoria_id], references: [id])
+
+  operator_id Int?
+  operator    Operator? @relation(fields: [operator_id], references: [id], onDelete: SetNull)
+
+  miejscowosc_simc String? @db.VarChar(20)
+  oferta_id        Int?
+  technologia      String? @db.VarChar(50)
+
+  thumbnail_url String? @db.VarChar(500)
+  og_image_url  String? @db.VarChar(500)
+
+  meta_title       String? @db.VarChar(70)
+  meta_description String? @db.VarChar(160)
+
   autor           String?   @default("Redakcja") @db.VarChar(100)
   opublikowany    Boolean   @default(false)
   wyrozniany      Boolean   @default(false)
   data_publikacji DateTime?
-  
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
-  
-  tagi            ArtykulTag[]
-  
+  redirect_url    String? @db.VarChar(500)  // przekierowanie przy deaktywacji
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tagi    ArtykulTag[]
+  metryki ArtykulMetryki[]
+  wersje  ArtykulWersja[]
+  alerty  ArtykulAlert[]
+
   @@unique([kategoria_id, slug])
   @@index([slug])
   @@index([kategoria_id])
   @@index([operator_id])
   @@index([opublikowany])
   @@map("artykuly")
-  metryki       ArtykulMetryki[]
-  wersje        ArtykulWersja[]
-  alerty        ArtykulAlert[]
 }
 
 model ArtykulTag {
   artykul_id Int
   tag_id     Int
-  
-  artykul    Artykul @relation(fields: [artykul_id], references: [id], onDelete: Cascade)
-  tag        Tag     @relation(fields: [tag_id], references: [id], onDelete: Cascade)
-  
+
+  artykul Artykul @relation(fields: [artykul_id], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tag_id], references: [id], onDelete: Cascade)
+
   @@id([artykul_id, tag_id])
   @@map("artykul_tagi")
 }
+
 // =====================================================
 // SEO TRACKING & CONTENT VERSIONING
 // =====================================================
 
 model ArtykulMetryki {
-  id            Int      @id @default(autoincrement())
-  artykul_id    Int
-  artykul       Artykul  @relation(fields: [artykul_id], references: [id], onDelete: Cascade)
-  
-  url           String?  @db.VarChar(500)
-  clicks        Int      @default(0)
-  impressions   Int      @default(0)
-  ctr           Decimal? @db.Decimal(5, 2)
-  position      Decimal? @db.Decimal(5, 2)
-  
-  top_queries   Json?
-  
-  data_pomiaru  DateTime @db.Date
-  
-  created_at    DateTime @default(now())
-  
+  id         Int     @id @default(autoincrement())
+  artykul_id Int
+  artykul    Artykul @relation(fields: [artykul_id], references: [id], onDelete: Cascade)
+
+  url         String?  @db.VarChar(500)
+  clicks      Int      @default(0)
+  impressions Int      @default(0)
+  ctr         Decimal? @db.Decimal(5, 2)
+  position    Decimal? @db.Decimal(5, 2)
+
+  top_queries Json?
+
+  data_pomiaru DateTime @db.Date
+
+  created_at DateTime @default(now())
+
   @@unique([artykul_id, data_pomiaru])
   @@index([artykul_id])
   @@index([data_pomiaru(sort: Desc)])
@@ -889,36 +898,176 @@ model ArtykulMetryki {
 }
 
 model ArtykulWersja {
-  id            Int      @id @default(autoincrement())
-  artykul_id    Int
-  artykul       Artykul  @relation(fields: [artykul_id], references: [id], onDelete: Cascade)
-  
-  tytul         String?  @db.VarChar(255)
-  tresc         String?
-  zajawka       String?
-  
-  powod         String?  @db.VarChar(100)
+  id         Int     @id @default(autoincrement())
+  artykul_id Int
+  artykul    Artykul @relation(fields: [artykul_id], references: [id], onDelete: Cascade)
+
+  tytul   String? @db.VarChar(255)
+  tresc   String?
+  zajawka String?
+
+  powod         String? @db.VarChar(100)
   dane_snapshot Json?
-  
-  created_at    DateTime @default(now())
-  
+
+  created_at DateTime @default(now())
+
   @@index([artykul_id])
   @@map("artykul_wersje")
 }
 
 model ArtykulAlert {
-  id            Int       @id @default(autoincrement())
-  artykul_id    Int
-  artykul       Artykul   @relation(fields: [artykul_id], references: [id], onDelete: Cascade)
-  
-  typ           String    @db.VarChar(50)
-  wiadomosc     String?
-  
-  resolved      Boolean   @default(false)
-  resolved_at   DateTime?
-  
-  created_at    DateTime  @default(now())
-  
+  id         Int     @id @default(autoincrement())
+  artykul_id Int
+  artykul    Artykul @relation(fields: [artykul_id], references: [id], onDelete: Cascade)
+
+  typ       String  @db.VarChar(50)
+  wiadomosc String?
+
+  resolved    Boolean   @default(false)
+  resolved_at DateTime?
+
+  created_at DateTime @default(now())
+
   @@index([resolved])
   @@map("artykul_alerty")
 }
+
+// Dodaj do prisma/schema.prisma
+
+// =====================================================
+// SEO SYSTEM
+// =====================================================
+
+model SeoPageData {
+  id Int @id @default(autoincrement())
+
+  // Identyfikacja strony
+  url_path  String @unique @db.VarChar(500)
+  page_type String @db.VarChar(50) // 'oferta', 'operator', 'miejscowosc', 'artykul'
+  entity_id Int?
+
+  // Meta tagi podstawowe
+  title         String? @db.VarChar(70)
+  description   String? @db.VarChar(160)
+  canonical_url String? @db.VarChar(500)
+  robots        String? @default("index, follow") @db.VarChar(100)
+
+  // Open Graph
+  og_title       String? @db.VarChar(95)
+  og_description String? @db.VarChar(200)
+  og_image       String? @db.VarChar(500)
+  og_type        String? @default("website") @db.VarChar(50)
+
+  // Twitter Cards
+  twitter_card        String? @default("summary_large_image") @db.VarChar(50)
+  twitter_title       String? @db.VarChar(70)
+  twitter_description String? @db.VarChar(200)
+  twitter_image       String? @db.VarChar(500)
+
+  // Dodatkowe
+  author   String? @db.VarChar(100)
+  keywords String? @db.VarChar(500)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relacje
+  jsonld      SeoJsonld[]
+  breadcrumbs SeoBreadcrumb[]
+  faq         SeoFaq[]
+
+  @@index([page_type])
+  @@index([page_type, entity_id])
+  @@map("seo_page_data")
+}
+
+model SeoJsonld {
+  id Int @id @default(autoincrement())
+
+  page_id Int
+  page    SeoPageData @relation(fields: [page_id], references: [id], onDelete: Cascade)
+
+  schema_type String @db.VarChar(100) // 'Product', 'LocalBusiness', etc.
+  jsonld_data Json
+
+  sort_order Int     @default(0)
+  active     Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([page_id])
+  @@index([schema_type])
+  @@map("seo_jsonld")
+}
+
+model SeoBreadcrumb {
+  id Int @id @default(autoincrement())
+
+  page_id Int
+  page    SeoPageData @relation(fields: [page_id], references: [id], onDelete: Cascade)
+
+  position Int
+  name     String @db.VarChar(100)
+  url      String @db.VarChar(500)
+
+  @@unique([page_id, position])
+  @@map("seo_breadcrumbs")
+}
+
+model SeoFaq {
+  id Int @id @default(autoincrement())
+
+  page_id Int
+  page    SeoPageData @relation(fields: [page_id], references: [id], onDelete: Cascade)
+
+  question String
+  answer   String
+
+  sort_order Int     @default(0)
+  active     Boolean @default(true)
+
+  created_at DateTime @default(now())
+
+  @@index([page_id])
+  @@map("seo_faq")
+}
+
+model OperatorLocation {
+  id Int @id @default(autoincrement())
+
+  operator_id Int
+  operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  name String? @db.VarChar(200)
+
+  // Adres
+  street_address   String? @db.VarChar(200)
+  address_locality String? @db.VarChar(100) // miasto
+  postal_code      String? @db.VarChar(10)
+  address_region   String? @db.VarChar(100) // województwo
+  address_country  String? @default("PL") @db.VarChar(2)
+
+  // Współrzędne
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+
+  // Kontakt
+  telephone String? @db.VarChar(20)
+  email     String? @db.VarChar(100)
+
+  // Godziny otwarcia
+  opening_hours Json?
+
+  // Typ
+  location_type String? @default("office") @db.VarChar(50)
+
+  active     Boolean  @default(true)
+  created_at DateTime @default(now())
+
+  @@index([operator_id])
+  @@map("operator_locations")
+}
+
+// Dodaj relację w modelu Operator:
+// locations        OperatorLocation[]

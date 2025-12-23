@@ -6,12 +6,7 @@ import OperatorTabs from "./OperatorTabs";
 import OperatorCoverageSearch from "./OperatorCoverageSearch";
 import OffersTab from "./tabs/OffersTab";
 import ReviewsTab from "./tabs/ReviewsTab";
-import QualityTab from "./tabs/QualityTab";
-import PriceHistoryTab from "./tabs/PriceHistoryTab";
-import ServiceTab from "./tabs/ServiceTab";
-import OutagesTab from "./tabs/OutagesTab";
-import FaqTab from "./tabs/FaqTab";
-import PromotionsTab from "./tabs/PromotionsTab";
+import InformacjeTab from "./tabs/InformacjeTab";
 
 interface Props {
   params: Promise<{ locale: string; operator: string }>;
@@ -69,10 +64,6 @@ export default async function OperatorProfilePage({ params }: Props) {
       faq: {
         where: { aktywne: true },
         orderBy: { kolejnosc: 'asc' }
-      },
-      promotions: {
-        where: { aktywna: true },
-        orderBy: { data_start: 'desc' }
       },
       _count: {
         select: {
@@ -152,26 +143,16 @@ export default async function OperatorProfilePage({ params }: Props) {
     odpowiedz: f.odpowiedz
   }));
 
-  const serializedPromotions = operator.promotions.map(p => ({
-    id: p.id,
-    tytul: p.tytul,
-    opis: p.opis,
-    kod: p.kod,
-    rabat: p.rabat,
-    data_koniec: p.data_koniec?.toISOString() || null
-  }));
+  // Liczba elementów dla zakładki Informacje
+  const infoCount = operator.speedtests.length + operator.priceHistory.length + 
+                    operator.outages.length + operator.faq.length;
 
-  // Konfiguracja zakładek
+  // Konfiguracja zakładek - uproszczona do 4
   const tabs = [
     { id: 'oferty', label: 'Oferty', icon: '📦', count: operator.oferty.length },
     { id: 'zasieg', label: 'Sprawdź zasięg', icon: '🔍' },
     { id: 'opinie', label: 'Opinie', icon: '⭐', count: totalReviews },
-    { id: 'jakosc', label: 'Jakość', icon: '📊', count: operator.speedtests.length },
-    { id: 'ceny', label: 'Historia cen', icon: '💰', count: operator.priceHistory.length },
-    { id: 'obsluga', label: 'Obsługa', icon: '🛠️' },
-    { id: 'awarie', label: 'Awarie', icon: '⚠️', count: operator.outages.filter(o => o.status === 'aktywna').length },
-    { id: 'faq', label: 'FAQ', icon: '❓', count: operator.faq.length },
-    { id: 'promocje', label: 'Promocje', icon: '🎁', count: operator.promotions.length },
+    { id: 'informacje', label: 'Informacje', icon: 'ℹ️', count: infoCount > 0 ? infoCount : undefined },
   ];
 
   return (
@@ -264,37 +245,13 @@ export default async function OperatorProfilePage({ params }: Props) {
             totalReviews={totalReviews}
           />
 
-          {/* Jakość */}
-          <QualityTab 
-            speedtests={serializedSpeedtests} 
-            operatorName={operator.nazwa} 
-          />
-
-          {/* Historia cen */}
-          <PriceHistoryTab 
-            priceHistory={serializedPriceHistory} 
-            operatorName={operator.nazwa} 
-          />
-
-          {/* Obsługa */}
-          <ServiceTab operatorName={operator.nazwa} />
-
-          {/* Awarie */}
-          <OutagesTab 
-            outages={serializedOutages} 
-            operatorName={operator.nazwa} 
-          />
-
-          {/* FAQ */}
-          <FaqTab 
-            faqs={serializedFaqs} 
-            operatorName={operator.nazwa} 
-          />
-
-          {/* Promocje */}
-          <PromotionsTab 
-            promotions={serializedPromotions} 
-            operatorName={operator.nazwa} 
+          {/* Informacje (agregacja: jakość, ceny, obsługa, awarie, FAQ) */}
+          <InformacjeTab
+            operatorName={operator.nazwa}
+            speedtests={serializedSpeedtests}
+            priceHistory={serializedPriceHistory}
+            outages={serializedOutages}
+            faqs={serializedFaqs}
           />
         </OperatorTabs>
 

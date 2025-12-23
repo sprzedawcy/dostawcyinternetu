@@ -1,385 +1,461 @@
+// app/admin/blog/ArtykulForm.tsx
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createArtykul, updateArtykul } from "./actions";
-
-interface Kategoria {
-  id: number;
-  nazwa: string;
-  slug: string;
-}
-
-interface Operator {
-  id: number;
-  nazwa: string;
-}
-
-interface Tag {
-  id: number;
-  nazwa: string;
-  slug: string;
-  typ: string | null;
-}
-
-interface Artykul {
-  id: number;
-  tytul: string;
-  slug: string;
-  zajawka: string | null;
-  tresc: string | null;
-  kategoria_id: number | null;
-  operator_id: number | null;
-  miejscowosc_simc: string | null;
-  technologia: string | null;
-  thumbnail_url: string | null;
-  meta_title: string | null;
-  meta_description: string | null;
-  autor: string | null;
-  opublikowany: boolean;
-  wyrozniany: boolean;
-  tagi: { tag: Tag }[];
-}
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { createArtykul, updateArtykul, deactivateArtykul, reactivateArtykul, generateSlug } from './actions';
+import { generateArtykulSEO } from './seo-actions';
 
 interface Props {
-  artykul?: Artykul | null;
-  kategorie: Kategoria[];
-  operatorzy: Operator[];
-  tagi: Tag[];
+  artykul?: any;
+  kategorie: any[];
 }
 
-const TECHNOLOGIE = [
-  { value: 'swiatlowod', label: 'Światłowód' },
-  { value: 'lte', label: 'LTE' },
-  { value: '5g', label: '5G' },
-  { value: 'kablowy', label: 'Kablowy HFC' },
-  { value: 'dsl', label: 'DSL' },
-  { value: 'radiowy', label: 'Radiowy' },
-];
-
-export default function ArtykulForm({ artykul, kategorie, operatorzy, tagi }: Props) {
+export default function ArtykulForm({ artykul, kategorie }: Props) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [selectedTagi, setSelectedTagi] = useState<number[]>(
-    artykul?.tagi.map(t => t.tag.id) || []
+  const [isPending, startTransition] = useTransition();
+  const [seoStatus, setSeoStatus] = useState<'idle' | 'generating' | 'done' | 'error'>('idle');
+  const [seoMessage, setSeoMessage] = useState('');
+  
+  // Deaktywacja
+  const [showDeactivate, setShowDeactivate] = useState(false);
+  const [redirectUrl, setRedirectUrl] = useState('');
+  const [deactivateError, setDeactivateError] = useState('');
+  
+  // Stan formularza
+  const [tytul, setTytul] = useState(artykul?.tytul || '');
+  const [slug, setSlug] = useState(artykul?.slug || '');
+  const [zajawka, setZajawka] = useState(artykul?.zajawka || '');
+  const [tresc, setTresc] = useState(artykul?.tresc || '');
+  const [kategoriaId, setKategoriaId] = useState(artykul?.kategoria_id || kategorie[0]?.id);
+  const [opublikowany, setOpublikowany] = useState(artykul?.opublikowany || false);
+  const [thumbnailUrl, setThumbnailUrl] = useState(artykul?.thumbnail_url || '');
+  const [autor, setAutor] = useState(artykul?.autor || 'Redakcja');
+  const [dataPublikacji, setDataPublikacji] = useState(
+    artykul?.data_publikacji 
+      ? new Date(artykul.data_publikacji).toISOString().slice(0, 16)
+      : ''
   );
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const [regenerateSEO, setRegenerateSEO] = useState(false);
+  
+  // Generuj slug z tytułu
+  const handleGenerateSlug = async () => {
+    if (!tytul) return;
+    const newSlug = await generateSlug(tytul);
+    setSlug(newSlug);
+  };
+  
+  // Zapisz artykuł
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    const formData = new FormData(e.currentTarget);
-    formData.set("tagi", JSON.stringify(selectedTagi));
-    formData.set("opublikowany", formData.get("opublikowany") ? "true" : "false");
-    formData.set("wyrozniany", formData.get("wyrozniany") ? "true" : "false");
-
-    let result;
-    if (artykul) {
-      result = await updateArtykul(artykul.id, formData);
-    } else {
-      result = await createArtykul(formData);
-    }
-
-    if (result.success) {
-      router.push("/admin/blog");
-      router.refresh();
-    } else {
-      alert("Błąd: " + result.error);
-    }
-    setLoading(false);
+    
+    const formData = new FormData();
+    formData.set('tytul', tytul);
+    formData.set('slug', slug);
+    formData.set('zajawka', zajawka);
+    formData.set('tresc', tresc);
+    formData.set('kategoria_id', kategoriaId.toString());
+    formData.set('opublikowany', opublikowany.toString());
+    formData.set('thumbnail_url', thumbnailUrl);
+    formData.set('autor', autor);
+    formData.set('data_publikacji', dataPublikacji);
+    formData.set('generate_seo', regenerateSEO.toString());
+    formData.set('regenerate_seo', regenerateSEO.toString());
+    
+    startTransition(async () => {
+      const result = artykul 
+        ? await updateArtykul(artykul.id, formData)
+        : await createArtykul(formData);
+      
+      if (result.success) {
+        router.push('/admin/blog');
+        router.refresh();
+      } else {
+        alert('Błąd: ' + result.error);
+      }
+    });
   };
-
-  const toggleTag = (tagId: number) => {
-    setSelectedTagi(prev =>
-      prev.includes(tagId)
-        ? prev.filter(id => id !== tagId)
-        : [...prev, tagId]
-    );
+  
+  // Ręczne generowanie SEO
+  const handleGenerateSEO = async () => {
+    if (!artykul?.id) {
+      alert('Najpierw zapisz artykuł');
+      return;
+    }
+    
+    setSeoStatus('generating');
+    setSeoMessage('Generowanie SEO przez AI...');
+    
+    try {
+      const result = await generateArtykulSEO(artykul.id);
+      
+      if (result.success) {
+        setSeoStatus('done');
+        setSeoMessage('SEO wygenerowane pomyślnie!');
+      } else {
+        setSeoStatus('error');
+        setSeoMessage('Błąd: ' + result.error);
+      }
+    } catch (error: any) {
+      setSeoStatus('error');
+      setSeoMessage('Błąd: ' + error.message);
+    }
   };
-
+  
+  // Deaktywacja
+  const handleDeactivate = async () => {
+    if (!artykul?.id) return;
+    
+    setDeactivateError('');
+    
+    startTransition(async () => {
+      const result = await deactivateArtykul(artykul.id, redirectUrl);
+      
+      if (result.success) {
+        router.push('/admin/blog');
+        router.refresh();
+      } else {
+        setDeactivateError(result.error || 'Błąd deaktywacji');
+      }
+    });
+  };
+  
+  // Reaktywacja
+  const handleReactivate = async () => {
+    if (!artykul?.id) return;
+    
+    startTransition(async () => {
+      const result = await reactivateArtykul(artykul.id);
+      
+      if (result.success) {
+        router.refresh();
+      } else {
+        alert('Błąd: ' + result.error);
+      }
+    });
+  };
+  
+  // Status publikacji
+  const getPublishStatus = () => {
+    if (artykul?.redirect_url) return { label: '🚫 Przekierowany', color: 'bg-red-100 text-red-700' };
+    if (!opublikowany) return { label: '📝 Szkic', color: 'bg-gray-100 text-gray-700' };
+    if (dataPublikacji && new Date(dataPublikacji) > new Date()) {
+      return { label: '⏰ Zaplanowany', color: 'bg-yellow-100 text-yellow-700' };
+    }
+    return { label: '✅ Opublikowany', color: 'bg-green-100 text-green-700' };
+  };
+  
+  const status = getPublishStatus();
+  const currentUrl = artykul?.kategoria 
+    ? `/blog/${artykul.kategoria.slug}/${artykul.slug}`
+    : null;
+  
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Sekcja 1: Podstawowe */}
-      <div className="bg-white rounded-xl border p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm">1</span>
-          Podstawowe
-        </h2>
-
-        <div className="space-y-4">
-          {/* Tytuł */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tytuł artykułu *
-            </label>
-            <input
-              type="text"
-              name="tytul"
-              defaultValue={artykul?.tytul || ""}
-              required
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Jak sprawdzić czy jest światłowód"
-            />
-          </div>
-
-          {/* Slug */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Slug URL
-            </label>
-            <input
-              type="text"
-              name="slug"
-              defaultValue={artykul?.slug || ""}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="jak-sprawdzic-czy-jest-swiatlowod (auto-generowany)"
-            />
-            <p className="text-xs text-gray-500 mt-1">Zostaw puste dla auto-generacji</p>
-          </div>
-
-          {/* Kategoria */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Kategoria *
-            </label>
-            <select
-              name="kategoria_id"
-              defaultValue={artykul?.kategoria_id || ""}
-              required
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      {/* Status i akcje */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <span className={`px-3 py-1 rounded-full text-sm font-medium ${status.color}`}>
+            {status.label}
+          </span>
+          {artykul?.redirect_url && (
+            <span className="text-sm text-orange-600">
+              → {artykul.redirect_url}
+            </span>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {artykul && !artykul.redirect_url && (
+            <button
+              type="button"
+              onClick={handleGenerateSEO}
+              disabled={seoStatus === 'generating'}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
             >
-              <option value="">-- Wybierz kategorię --</option>
-              {kategorie.map(kat => (
-                <option key={kat.id} value={kat.id}>{kat.nazwa}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Zajawka */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Zajawka
-            </label>
-            <textarea
-              name="zajawka"
-              defaultValue={artykul?.zajawka || ""}
-              rows={2}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Krótki opis artykułu widoczny na liście"
-            />
-          </div>
-
-          {/* Treść */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Treść (HTML)
-            </label>
-            <textarea
-              name="tresc"
-              defaultValue={artykul?.tresc || ""}
-              rows={15}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-              placeholder="<h2>Nagłówek</h2><p>Treść artykułu...</p>"
-            />
-          </div>
-
-          {/* Thumbnail */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              URL obrazka głównego
-            </label>
-            <input
-              type="url"
-              name="thumbnail_url"
-              defaultValue={artykul?.thumbnail_url || ""}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="https://..."
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Sekcja 2: Powiązania */}
-      <div className="bg-white rounded-xl border p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span className="w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-sm">2</span>
-          Powiązania
-        </h2>
-
-        <div className="grid md:grid-cols-2 gap-4">
-          {/* Operator */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Operator (opcjonalnie)
-            </label>
-            <select
-              name="operator_id"
-              defaultValue={artykul?.operator_id || ""}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              {seoStatus === 'generating' ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Generowanie...
+                </>
+              ) : (
+                <>🤖 Generuj SEO</>
+              )}
+            </button>
+          )}
+          
+          {artykul?.redirect_url && (
+            <button
+              type="button"
+              onClick={handleReactivate}
+              disabled={isPending}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
             >
-              <option value="">-- Brak --</option>
-              {operatorzy.map(op => (
-                <option key={op.id} value={op.id}>{op.nazwa}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Technologia */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Technologia (opcjonalnie)
-            </label>
-            <select
-              name="technologia"
-              defaultValue={artykul?.technologia || ""}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">-- Brak --</option>
-              {TECHNOLOGIE.map(tech => (
-                <option key={tech.value} value={tech.value}>{tech.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Miejscowość SIMC */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Miejscowość SIMC (opcjonalnie)
-            </label>
-            <input
-              type="text"
-              name="miejscowosc_simc"
-              defaultValue={artykul?.miejscowosc_simc || ""}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="np. 0918123"
-            />
-          </div>
-
-          {/* Autor */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Autor
-            </label>
-            <input
-              type="text"
-              name="autor"
-              defaultValue={artykul?.autor || "Redakcja"}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
-
-        {/* Tagi */}
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Tagi
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {tagi.map(tag => (
-              <button
-                key={tag.id}
-                type="button"
-                onClick={() => toggleTag(tag.id)}
-                className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                  selectedTagi.includes(tag.id)
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {tag.nazwa}
-              </button>
-            ))}
-          </div>
+              ♻️ Reaktywuj
+            </button>
+          )}
         </div>
       </div>
-
-      {/* Sekcja 3: SEO */}
-      <div className="bg-white rounded-xl border p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span className="w-6 h-6 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center text-sm">3</span>
-          SEO
-        </h2>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Meta Title
-              <span className="text-gray-400 font-normal ml-2">(max 70 znaków)</span>
-            </label>
-            <input
-              type="text"
-              name="meta_title"
-              defaultValue={artykul?.meta_title || ""}
-              maxLength={70}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Tytuł dla Google"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Meta Description
-              <span className="text-gray-400 font-normal ml-2">(max 160 znaków)</span>
-            </label>
-            <textarea
-              name="meta_description"
-              defaultValue={artykul?.meta_description || ""}
-              maxLength={160}
-              rows={2}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Opis dla Google"
-            />
-          </div>
+      
+      {/* SEO Status Message */}
+      {seoMessage && (
+        <div className={`p-3 rounded-lg ${
+          seoStatus === 'done' ? 'bg-green-100 text-green-700' :
+          seoStatus === 'error' ? 'bg-red-100 text-red-700' :
+          'bg-blue-100 text-blue-700'
+        }`}>
+          {seoMessage}
         </div>
+      )}
+      
+      {/* Tytuł */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Tytuł *
+        </label>
+        <input
+          type="text"
+          value={tytul}
+          onChange={(e) => setTytul(e.target.value)}
+          required
+          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+        />
       </div>
-
-      {/* Sekcja 4: Publikacja */}
-      <div className="bg-white rounded-xl border p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span className="w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-sm">4</span>
-          Publikacja
-        </h2>
-
-        <div className="flex flex-wrap gap-6">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              name="opublikowany"
-              defaultChecked={artykul?.opublikowany || false}
-              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-gray-700">Opublikowany</span>
-          </label>
-
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              name="wyrozniany"
-              defaultChecked={artykul?.wyrozniany || false}
-              className="w-5 h-5 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
-            />
-            <span className="text-gray-700">Wyróżniony ⭐</span>
-          </label>
+      
+      {/* Slug z przyciskiem generowania */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Slug (URL)
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            required
+            className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+            placeholder="nazwa-artykulu"
+          />
+          <button
+            type="button"
+            onClick={handleGenerateSlug}
+            className="px-4 py-2 bg-gray-100 border rounded-lg hover:bg-gray-200 text-sm font-medium"
+            title="Generuj slug z tytułu"
+          >
+            🔄 Generuj
+          </button>
         </div>
+        {currentUrl && (
+          <p className="text-xs text-gray-500 mt-1">
+            URL: {currentUrl}
+          </p>
+        )}
       </div>
-
-      {/* Przyciski */}
-      <div className="flex items-center gap-4">
+      
+      {/* Kategoria */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Kategoria
+        </label>
+        <select
+          value={kategoriaId}
+          onChange={(e) => setKategoriaId(parseInt(e.target.value))}
+          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+        >
+          {kategorie.map(kat => (
+            <option key={kat.id} value={kat.id}>{kat.nazwa}</option>
+          ))}
+        </select>
+      </div>
+      
+      {/* Zajawka */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Zajawka (opis)
+        </label>
+        <textarea
+          value={zajawka}
+          onChange={(e) => setZajawka(e.target.value)}
+          rows={3}
+          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      
+      {/* Treść */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Treść (HTML)
+        </label>
+        <textarea
+          value={tresc}
+          onChange={(e) => setTresc(e.target.value)}
+          rows={15}
+          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+        />
+      </div>
+      
+      {/* Thumbnail */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          URL obrazka
+        </label>
+        <input
+          type="url"
+          value={thumbnailUrl}
+          onChange={(e) => setThumbnailUrl(e.target.value)}
+          placeholder="https://..."
+          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+        />
+        {thumbnailUrl && (
+          <div className="mt-2">
+            <img src={thumbnailUrl} alt="Preview" className="h-32 object-cover rounded" />
+          </div>
+        )}
+      </div>
+      
+      {/* Autor */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Autor
+        </label>
+        <input
+          type="text"
+          value={autor}
+          onChange={(e) => setAutor(e.target.value)}
+          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      
+      {/* Data publikacji */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Data publikacji
+        </label>
+        <input
+          type="datetime-local"
+          value={dataPublikacji}
+          onChange={(e) => setDataPublikacji(e.target.value)}
+          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+        />
+        <p className="text-sm text-gray-500 mt-1">
+          Pozostaw puste dla natychmiastowej publikacji
+        </p>
+      </div>
+      
+      {/* Opcje */}
+      <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={opublikowany}
+            onChange={(e) => setOpublikowany(e.target.checked)}
+            className="w-4 h-4 text-blue-600 rounded"
+          />
+          <span className="font-medium">Opublikuj artykuł</span>
+        </label>
+        
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={regenerateSEO}
+            onChange={(e) => setRegenerateSEO(e.target.checked)}
+            className="w-4 h-4 text-purple-600 rounded"
+          />
+          <span className="font-medium">
+            🤖 {artykul ? 'Regeneruj SEO przy zapisie' : 'Generuj SEO automatycznie'}
+          </span>
+        </label>
+        <p className="text-sm text-gray-500 ml-6">
+          AI wygeneruje unikalne: title, description, JSON-LD, FAQ, breadcrumbs
+        </p>
+      </div>
+      
+      {/* Przyciski zapisu */}
+      <div className="flex gap-3">
         <button
           type="submit"
-          disabled={loading}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium"
+          disabled={isPending}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? "⏳ Zapisywanie..." : artykul ? "💾 Zapisz zmiany" : "✓ Utwórz artykuł"}
+          {isPending ? 'Zapisywanie...' : (artykul ? 'Zapisz zmiany' : 'Utwórz artykuł')}
         </button>
+        
         <button
           type="button"
           onClick={() => router.back()}
-          className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+          className="px-6 py-2 border rounded-lg hover:bg-gray-50"
         >
           Anuluj
         </button>
       </div>
+      
+      {/* Sekcja deaktywacji - tylko dla istniejących, aktywnych artykułów */}
+      {artykul && !artykul.redirect_url && (
+        <div className="border-t pt-6 mt-6">
+          <h3 className="text-lg font-semibold text-red-700 mb-3">⚠️ Strefa niebezpieczna</h3>
+          
+          {!showDeactivate ? (
+            <button
+              type="button"
+              onClick={() => setShowDeactivate(true)}
+              className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50"
+            >
+              🚫 Deaktywuj artykuł...
+            </button>
+          ) : (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-4">
+              <p className="text-sm text-red-700">
+                Deaktywacja ukryje artykuł i utworzy przekierowanie 301 na podany URL.
+                Artykuł NIE zostanie usunięty - można go później reaktywować.
+              </p>
+              
+              <div>
+                <label className="block text-sm font-medium text-red-700 mb-1">
+                  Przekieruj na URL (wymagane) *
+                </label>
+                <input
+                  type="text"
+                  value={redirectUrl}
+                  onChange={(e) => setRedirectUrl(e.target.value)}
+                  placeholder="/blog/kategoria/inny-artykul"
+                  className="w-full px-4 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                />
+                <p className="text-xs text-red-600 mt-1">
+                  Podaj względny URL aktywnej strony (np. /blog/kategoria/slug)
+                </p>
+              </div>
+              
+              {deactivateError && (
+                <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+                  ❌ {deactivateError}
+                </div>
+              )}
+              
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleDeactivate}
+                  disabled={isPending || !redirectUrl}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isPending ? 'Deaktywacja...' : '🚫 Potwierdź deaktywację'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeactivate(false);
+                    setRedirectUrl('');
+                    setDeactivateError('');
+                  }}
+                  className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                >
+                  Anuluj
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </form>
   );
 }

@@ -330,6 +330,19 @@ model Operator {
   aktywny         Boolean  @default(true)
   redirect_url    String?
   
+  // SEO
+  meta_title       String?  @db.VarChar(70)
+  meta_description String?  @db.VarChar(160)
+  keywords         String[]
+  
+  // Kontakt i info
+  strona_www       String?  @db.VarChar(255)
+  telefon          String?  @db.VarChar(20)
+  typ              String?  @default("krajowy") @db.VarChar(20)
+  technologie      String[]
+  regiony          String[]
+  
+  // Relacje
   oferty          Oferta[]
   leady           Lead[]
   zasiegi         ZasiegOperatora[]

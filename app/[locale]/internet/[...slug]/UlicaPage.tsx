@@ -17,14 +17,9 @@ function formatUlicaNazwa(slug: string): string {
 }
 
 export default async function UlicaPage({ miejscowoscSlug, ulicaSlug, locale }: Props) {
-  // 1. Pobierz dane miejscowości
   const miejscowoscData = await prisma.polska.findFirst({
     where: { slug: miejscowoscSlug },
-    select: {
-      miejscowosc: true,
-      simc: true,
-      slug: true
-    }
+    select: { miejscowosc: true, simc: true, slug: true }
   });
 
   if (!miejscowoscData) {
@@ -33,114 +28,86 @@ export default async function UlicaPage({ miejscowoscSlug, ulicaSlug, locale }: 
 
   const ulicaNazwa = formatUlicaNazwa(ulicaSlug);
 
-  // 2. Znajdź ulicę - pobierz id_ulicy
   const ulicaData = await prisma.polska.findFirst({
     where: {
       simc: miejscowoscData.simc,
-      ulica: {
-        contains: ulicaNazwa,
-        mode: 'insensitive'
-      }
+      ulica: { contains: ulicaNazwa, mode: 'insensitive' }
     },
-    select: {
-      id_ulicy: true,
-      ulica: true
-    }
+    select: { id_ulicy: true, ulica: true }
   });
 
-  // 3. Pobierz operatorów z zasięgiem na tej ulicy
   const operatorzyZZasiegiem = await prisma.operatorCoverage.findMany({
-    where: {
-      simc: miejscowoscData.simc,
-      id_ulicy: ulicaData?.id_ulicy || '00000'
-    },
-    select: {
-      operator_id: true
-    },
+    where: { simc: miejscowoscData.simc, id_ulicy: ulicaData?.id_ulicy || '00000' },
+    select: { operator_id: true },
     distinct: ['operator_id']
   });
 
   const operatorIds = operatorzyZZasiegiem.map(o => o.operator_id);
 
-  // 4. Pobierz oferty - kablowe od operatorów z zasięgiem + wszystkie komórkowe
   const offers = await prisma.oferta.findMany({
     where: {
       aktywna: true,
       OR: [
         { typ_polaczenia: 'komorkowe' },
-        { 
-          typ_polaczenia: 'kablowe',
-          operator_id: { in: operatorIds.length > 0 ? operatorIds : [-1] }
-        }
+        { typ_polaczenia: 'kablowe', operator_id: { in: operatorIds.length > 0 ? operatorIds : [-1] } }
       ]
     },
-    include: {
-      operator: {
-        select: { id: true, nazwa: true, slug: true, logo_url: true }
-      }
-    },
-    orderBy: [
-      { wyrozoniona: 'desc' },
-      { lokalna: 'desc' },
-      { priorytet: 'desc' }
-    ]
+    include: { operator: { select: { id: true, nazwa: true, slug: true, logo_url: true } } },
+    orderBy: [{ wyrozoniona: 'desc' }, { lokalna: 'desc' }, { priorytet: 'desc' }]
   });
 
   const operators = [...new Map(offers.map(o => [o.operator.id, o.operator])).values()];
   const serializedOffers = JSON.parse(JSON.stringify(offers));
 
-  // Policz oferty kablowe vs mobilne
   const ofertyKablowe = offers.filter(o => o.typ_polaczenia === 'kablowe').length;
   const ofertyMobilne = offers.filter(o => o.typ_polaczenia === 'komorkowe').length;
 
   return (
-    <div className="bg-gray-50">
+    <div className="page-wrapper">
       {/* Breadcrumbs */}
-      <div className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <nav className="flex items-center gap-2 text-sm text-gray-600">
-            <Link href="/" className="hover:text-blue-600">Strona główna</Link>
-            <span className="text-gray-400">/</span>
-            <Link href={`/internet/${miejscowoscSlug}`} className="hover:text-blue-600">
+      <div className="breadcrumbs-wrapper">
+        <div className="container">
+          <nav className="breadcrumbs">
+            <Link href="/" className="breadcrumbs__link">Strona główna</Link>
+            <span className="breadcrumbs__separator">/</span>
+            <Link href={`/internet/${miejscowoscSlug}`} className="breadcrumbs__link">
               {miejscowoscData.miejscowosc}
             </Link>
-            <span className="text-gray-400">/</span>
-            <span className="text-gray-900 font-medium">{ulicaNazwa}</span>
+            <span className="breadcrumbs__separator">/</span>
+            <span className="breadcrumbs__current">{ulicaNazwa}</span>
           </nav>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="container section">
         {/* Hero section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-black text-gray-900 mb-4">
+        <div className="page-hero">
+          <h1 className="page-hero__title">
             Internet {ulicaNazwa}, {miejscowoscData.miejscowosc}
           </h1>
           
-          {/* Intro text */}
           {operatorIds.length > 0 ? (
-            <p className="text-gray-800 text-lg leading-relaxed">
+            <p className="page-hero__description">
               Znaleźliśmy {ofertyKablowe} ofert internetu kablowego dostępnych pod adresem {ulicaNazwa}, {miejscowoscData.miejscowosc}. 
               {ofertyMobilne > 0 && ` Dodatkowo ${ofertyMobilne} ofert internetu mobilnego.`}
               {' '}Wybierz ofertę i podaj numer budynku, aby sprawdzić dokładną dostępność.
             </p>
           ) : (
-            <p className="text-gray-800 text-lg leading-relaxed">
+            <p className="page-hero__description">
               Sprawdź oferty internetu - {ulicaNazwa}, {miejscowoscData.miejscowosc}. 
               Wybierz ofertę i podaj dokładny adres, aby zweryfikować dostępność.
             </p>
           )}
 
-          {/* Info o weryfikacji */}
           {operatorIds.length > 0 && (
-            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-sm">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+            <span className="status-badge status-badge--success">
+              <span className="status-badge__dot"></span>
               {operatorIds.length} operatorów z potwierdzonym zasięgiem
-            </div>
+            </span>
           )}
         </div>
 
-        {/* Lista ofert z modalem - level='ulica' */}
+        {/* Lista ofert */}
         <OffersList 
           offers={serializedOffers} 
           operators={operators}
@@ -156,11 +123,11 @@ export default async function UlicaPage({ miejscowoscSlug, ulicaSlug, locale }: 
         />
 
         {/* Artykuł SEO */}
-        <div className="mt-12 bg-white rounded-xl border border-gray-200 p-6 md:p-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">
+        <div className="content-box">
+          <h2 className="content-box__title">
             Internet {ulicaNazwa}, {miejscowoscData.miejscowosc}
           </h2>
-          <p className="text-gray-900 leading-relaxed mb-4">
+          <p className="content-box__text">
             {ulicaNazwa}, {miejscowoscData.miejscowosc} - ulica z dostępem do internetu 
             {operatorIds.length > 0 
               ? ` od ${operatorIds.length} operatorów kablowych. ` 
@@ -168,7 +135,7 @@ export default async function UlicaPage({ miejscowoscSlug, ulicaSlug, locale }: 
             Aby sprawdzić dokładną dostępność usług pod Twoim adresem, wybierz interesującą Cię ofertę 
             i podaj numer budynku.
           </p>
-          <p className="text-gray-900 leading-relaxed">
+          <p className="content-box__text">
             Oferty internetu mobilnego (LTE, 5G) są dostępne niezależnie od adresu 
             i mogą stanowić alternatywę przy braku zasięgu operatorów kablowych.
           </p>

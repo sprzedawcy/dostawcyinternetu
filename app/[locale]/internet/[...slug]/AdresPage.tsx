@@ -17,7 +17,6 @@ function formatUlicaNazwa(slug: string): string {
     .join(' ');
 }
 
-// Sanityzacja numeru budynku
 function sanitizeNumer(nr: string): string {
   return nr.replace(/[<>'"`;(){}[\]\\]/g, '').trim().slice(0, 20);
 }
@@ -25,14 +24,9 @@ function sanitizeNumer(nr: string): string {
 export default async function AdresPage({ miejscowoscSlug, ulicaSlug, numer, locale }: Props) {
   const numerSafe = sanitizeNumer(decodeURIComponent(numer));
   
-  // Pobierz dane miejscowości
   const miejscowoscData = await prisma.polska.findFirst({
     where: { slug: miejscowoscSlug },
-    select: {
-      miejscowosc: true,
-      simc: true,
-      slug: true
-    }
+    select: { miejscowosc: true, simc: true, slug: true }
   });
 
   if (!miejscowoscData) {
@@ -42,179 +36,114 @@ export default async function AdresPage({ miejscowoscSlug, ulicaSlug, numer, loc
   const ulicaNazwa = formatUlicaNazwa(ulicaSlug);
   const pelnyAdres = `${ulicaNazwa} ${numerSafe}, ${miejscowoscData.miejscowosc}`;
 
-  // Znajdź dokładny adres w bazie
+  // Znajdź adres w bazie (opcjonalnie - może nie istnieć)
   const adresData = await prisma.polska.findFirst({
     where: {
       simc: miejscowoscData.simc,
-      ulica: {
-        contains: ulicaNazwa,
-        mode: 'insensitive'
-      },
+      ulica: { contains: ulicaNazwa, mode: 'insensitive' },
       nr: numerSafe
     },
-    select: {
-      teryt: true,
-      miejscowosc: true,
-      ulica: true,
-      nr: true,
-      simc: true,
-      id_ulicy: true
-    }
+    select: { teryt: true, miejscowosc: true, ulica: true, nr: true, simc: true, id_ulicy: true }
   });
 
-  const adresIstnieje = !!adresData;
-
-  // Znajdź operatorów z zasięgiem pod tym adresem
-  let operatorzyZZasiegiem: number[] = [];
+  // Sprawdź coverage kablowy (jeśli adres istnieje w bazie)
+  let operatorzyKablowi: number[] = [];
   
   if (adresData) {
     const coverage = await prisma.operatorCoverage.findMany({
-      where: {
-        simc: adresData.simc,
-        id_ulicy: adresData.id_ulicy,
-        nr: adresData.nr
-      },
-      select: {
-        operator_id: true,
-        hp_count: true
-      }
+      where: { simc: adresData.simc, id_ulicy: adresData.id_ulicy, nr: adresData.nr },
+      select: { operator_id: true, hp_count: true }
     });
-    operatorzyZZasiegiem = coverage.filter(c => c.hp_count > 0).map(c => c.operator_id);
+    operatorzyKablowi = coverage.filter(c => c.hp_count > 0).map(c => c.operator_id);
   }
 
-  // Pobierz oferty - TYLKO od operatorów z zasięgiem (kablowe) + wszystkie mobilne
+  const maKablowy = operatorzyKablowi.length > 0;
+
+  // Pobierz oferty: ZAWSZE mobilne + kablowe jeśli są w coverage
   const offers = await prisma.oferta.findMany({
     where: {
       aktywna: true,
       OR: [
         { typ_polaczenia: 'komorkowe' },
-        { 
-          typ_polaczenia: 'kablowe',
-          operator_id: { in: operatorzyZZasiegiem.length > 0 ? operatorzyZZasiegiem : [-1] }
-        }
+        ...(maKablowy ? [{ typ_polaczenia: 'kablowe', operator_id: { in: operatorzyKablowi } }] : [])
       ]
     },
-    include: {
-      operator: {
-        select: { id: true, nazwa: true, slug: true, logo_url: true }
-      }
-    },
-    orderBy: [
-      { wyrozoniona: 'desc' },
-      { lokalna: 'desc' },
-      { priorytet: 'desc' },
-      { abonament: 'asc' }
-    ]
+    include: { operator: { select: { id: true, nazwa: true, slug: true, logo_url: true } } },
+    orderBy: [{ wyrozoniona: 'desc' }, { lokalna: 'desc' }, { priorytet: 'desc' }, { abonament: 'asc' }]
   });
 
   const operators = [...new Map(offers.map(o => [o.operator.id, o.operator])).values()];
   const serializedOffers = JSON.parse(JSON.stringify(offers));
   
   const ofertyKablowe = offers.filter(o => o.typ_polaczenia === 'kablowe').length;
+  const ofertyMobilne = offers.filter(o => o.typ_polaczenia === 'komorkowe').length;
 
   return (
-    <div className="bg-gray-50">
+    <div className="page-wrapper">
       {/* Breadcrumbs */}
-      <div className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <nav className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
-            <Link href="/" className="hover:text-blue-600">Strona główna</Link>
-            <span className="text-gray-400">/</span>
-            <Link href={`/internet/${miejscowoscSlug}`} className="hover:text-blue-600">
+      <div className="breadcrumbs-wrapper">
+        <div className="container">
+          <nav className="breadcrumbs">
+            <Link href="/" className="breadcrumbs__link">Strona główna</Link>
+            <span className="breadcrumbs__separator">/</span>
+            <Link href={`/internet/${miejscowoscSlug}`} className="breadcrumbs__link">
               {miejscowoscData.miejscowosc}
             </Link>
-            <span className="text-gray-400">/</span>
-            <Link href={`/internet/${miejscowoscSlug}/${ulicaSlug}`} className="hover:text-blue-600">
+            <span className="breadcrumbs__separator">/</span>
+            <Link href={`/internet/${miejscowoscSlug}/${ulicaSlug}`} className="breadcrumbs__link">
               {ulicaNazwa}
             </Link>
-            <span className="text-gray-400">/</span>
-            <span className="text-gray-900 font-medium">{numerSafe}</span>
+            <span className="breadcrumbs__separator">/</span>
+            <span className="breadcrumbs__current">{numerSafe}</span>
           </nav>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="container section">
         {/* Hero */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
-            <h1 className="text-3xl font-black text-gray-900">
-              Internet: {pelnyAdres}
-            </h1>
+        <div className="page-hero">
+          <div className="page-hero__header">
+            <h1 className="page-hero__title">Internet: {pelnyAdres}</h1>
             
-            {adresIstnieje ? (
-              operatorzyZZasiegiem.length > 0 ? (
-                <span className="px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
-                  ✓ {operatorzyZZasiegiem.length} operatorów kablowych
-                </span>
-              ) : (
-                <span className="px-4 py-2 bg-amber-100 text-amber-800 rounded-full text-sm font-semibold">
-                  ⚠ Brak zasięgu kablowego
-                </span>
-              )
+            {maKablowy ? (
+              <span className="status-badge status-badge--success">
+                <span className="status-badge__dot"></span>
+                {operatorzyKablowi.length} operatorów kablowych
+              </span>
             ) : (
-              <span className="px-4 py-2 bg-gray-100 text-gray-600 rounded-full text-sm font-semibold">
-                Adres do weryfikacji
+              <span className="status-badge status-badge--info">
+                <span className="status-badge__dot"></span>
+                {ofertyMobilne} ofert mobilnych (LTE/5G)
               </span>
             )}
           </div>
           
-          <p className="text-gray-800 text-lg leading-relaxed">
-            {adresIstnieje && operatorzyZZasiegiem.length > 0 
-              ? `Znaleźliśmy ${ofertyKablowe} ofert internetu kablowego dostępnych pod tym adresem. Możesz zamówić bez dodatkowej weryfikacji.`
-              : 'Poniżej znajdziesz oferty internetu mobilnego dostępne w Twojej lokalizacji.'
+          <p className="page-hero__description">
+            {maKablowy 
+              ? `Znaleźliśmy ${ofertyKablowe} ofert internetu kablowego oraz ${ofertyMobilne} ofert mobilnych dostępnych pod tym adresem.`
+              : `Pod tym adresem dostępny jest internet mobilny (LTE/5G) - ${ofertyMobilne} ofert. Sprawdź poniżej lub zadzwoń, aby dowiedzieć się o planach rozbudowy sieci kablowej.`
             }
           </p>
         </div>
 
-        {/* Brak zasięgu kablowego - komunikat */}
-        {adresIstnieje && operatorzyZZasiegiem.length === 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-8">
-            <div className="flex items-start gap-4">
-              <div className="text-3xl">📡</div>
-              <div>
-                <h2 className="text-lg font-bold text-amber-900 mb-2">
-                  Brak internetu kablowego pod tym adresem
-                </h2>
-                <p className="text-amber-700 mb-4">
-                  Żaden z operatorów kablowych nie ma jeszcze zasięgu pod adresem {pelnyAdres}.
-                  Poniżej znajdziesz oferty internetu mobilnego (LTE/5G), które są dostępne w każdej lokalizacji.
-                </p>
-                <a
-                  href="tel:+48532274808"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors"
-                >
-                  📞 Zadzwoń - sprawdzimy dostępność
-                </a>
-              </div>
+        {/* Info o braku kablowego - ale NIE blokujące */}
+        {!maKablowy && (
+          <div className="alert alert--info">
+            <div className="alert__icon">📡</div>
+            <div className="alert__content">
+              <h2 className="alert__title">Internet mobilny (LTE/5G)</h2>
+              <p className="alert__text">
+                Pod adresem {pelnyAdres} rekomendujemy internet mobilny. 
+                Jeśli interesuje Cię internet kablowy, zadzwoń - sprawdzimy plany rozbudowy sieci.
+              </p>
+              <a href="tel:+48532274808" className="btn btn-primary">
+                📞 Zadzwoń: 532 274 808
+              </a>
             </div>
           </div>
         )}
 
-        {/* Adres nie istnieje w bazie */}
-        {!adresIstnieje && (
-          <div className="bg-gray-100 border border-gray-200 rounded-xl p-6 mb-8">
-            <div className="flex items-start gap-4">
-              <div className="text-3xl">🔍</div>
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 mb-2">
-                  Adres wymaga weryfikacji
-                </h2>
-                <p className="text-gray-600 mb-4">
-                  Adres {pelnyAdres} nie został jeszcze zweryfikowany w naszej bazie. 
-                  Skontaktuj się z nami, aby sprawdzić dostępność.
-                </p>
-                <a
-                  href="tel:+48532274808"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  📞 Zadzwoń: 532 274 808
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Lista ofert - level='adres' = bez modala */}
+        {/* Lista ofert - ZAWSZE pokazuj */}
         <OffersList 
           offers={serializedOffers} 
           operators={operators}
@@ -230,19 +159,13 @@ export default async function AdresPage({ miejscowoscSlug, ulicaSlug, numer, loc
           numerBudynku={numerSafe}
         />
 
-        {/* Link do zmiany adresu */}
-        <div className="mt-8 text-center">
-          <Link
-            href={`/internet/${miejscowoscSlug}/${ulicaSlug}`}
-            className="text-blue-600 hover:text-blue-800 font-medium"
-          >
+        {/* Linki nawigacyjne */}
+        <div className="page-links">
+          <Link href={`/internet/${miejscowoscSlug}/${ulicaSlug}`} className="link">
             ← Zmień numer budynku
           </Link>
-          <span className="mx-3 text-gray-300">|</span>
-          <Link
-            href={`/internet/${miejscowoscSlug}`}
-            className="text-blue-600 hover:text-blue-800 font-medium"
-          >
+          <span className="page-links__separator">|</span>
+          <Link href={`/internet/${miejscowoscSlug}`} className="link">
             Zmień adres
           </Link>
         </div>

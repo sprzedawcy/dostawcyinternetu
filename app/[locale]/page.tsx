@@ -1,4 +1,4 @@
-import SearchManager from "../../src/features/search/components/SearchManager";
+import SearchWrapper from "../../src/features/search/components/SearchWrapper";
 
 export default function LocalePage() {
   return (
@@ -13,7 +13,7 @@ export default function LocalePage() {
           </p>
         </header>
 
-        <SearchManager />
+        <SearchWrapper />
         
       </div>
     </div>

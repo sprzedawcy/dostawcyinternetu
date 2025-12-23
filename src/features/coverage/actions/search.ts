@@ -1,7 +1,7 @@
 "use server"
 import { prisma } from "@/lib/prisma";
 
-// Funkcja normalizująca polskie znaki
+// Funkcja normalizująca polskie znaki (do wyszukiwania)
 function normalize(str: string) {
   if (!str) return "";
   return str.toLowerCase()
@@ -12,53 +12,101 @@ function normalize(str: string) {
     .trim();
 }
 
-// Usuń redundantne prefixy z nazwy ulicy
-function cleanStreetPrefix(name: string): string {
+// Normalizuj nazwę ulicy - zamień skróty na pełne formy
+function normalizeStreetName(name: string): string {
   if (!name) return "";
   
-  // Wzorce do usunięcia (case-insensitive)
-  const patterns = [
-    /^os\.\s*osiedle\s*/i,   // Os. Osiedle → Osiedle
-    /^al\.\s*aleja\s*/i,     // Al. Aleja → Aleja
-    /^al\.\s*aleje\s*/i,     // Al. Aleje → Aleje
-    /^ul\.\s*ulica\s*/i,     // Ul. Ulica → Ulica
-    /^pl\.\s*plac\s*/i,      // Pl. Plac → Plac
-  ];
+  let result = name.trim();
   
-  for (const pattern of patterns) {
-    if (pattern.test(name)) {
-      return name.replace(pattern, '');
-    }
-  }
+  // 1. Zamień duplikaty "AL. ALEJA X" → "Aleja X"
+  result = result.replace(/^al\.\s*aleja\s+/i, 'Aleja ');
+  result = result.replace(/^al\.\s*aleje\s+/i, 'Aleje ');
+  result = result.replace(/^os\.\s*osiedle\s+/i, 'Osiedle ');
+  result = result.replace(/^pl\.\s*plac\s+/i, 'Plac ');
+  result = result.replace(/^ul\.\s*ulica\s+/i, 'Ulica ');
   
-  return name;
+  // 2. Zamień same skróty "Al. X" → "Aleja X" (jeśli nie złapane wyżej)
+  result = result.replace(/^al\.\s+/i, 'Aleja ');
+  result = result.replace(/^os\.\s+/i, 'Osiedle ');
+  result = result.replace(/^pl\.\s+/i, 'Plac ');
+  result = result.replace(/^ul\.\s+/i, 'Ulica ');
+  
+  // 3. Usuń podwójne spacje
+  result = result.replace(/\s+/g, ' ').trim();
+  
+  return result;
 }
 
-// Popraw kapitalizację nazwy ulicy (obsługuje polskie znaki)
-function fixStreetCapitalization(name: string): string {
+// Popraw kapitalizację nazwy ulicy
+function fixCapitalization(name: string): string {
   if (!name) return "";
   
-  const abbreviations = ['II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XX', 'XXI'];
+  const abbreviationsUpper = ['KEN', 'AK', 'WP', 'PKP', 'ZHP', 'ZHR', 'PCK', 'NSZZ'];
   
   return name
     .split(' ')
-    .map(word => {
+    .map((word, index) => {
       if (!word) return word;
       
-      if (abbreviations.includes(word.toUpperCase())) {
-        return word.toUpperCase();
+      const upper = word.toUpperCase();
+      
+      // Rzymskie cyfry - wielkie
+      if (romanNumerals.includes(upper)) {
+        return upper;
       }
       
+      // Skróty organizacji - wielkie
+      if (abbreviationsUpper.includes(upper)) {
+        return upper;
+      }
+      
+      // Obsługa myślników (np. "Nowaka-Jeziorańskiego")
       if (word.includes('-')) {
         return word
           .split('-')
-          .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLocaleLowerCase('pl'))
+          .map(part => {
+            if (!part) return part;
+            // Liczby zostawiamy
+            if (/^\d+$/.test(part)) return part;
+            return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+          })
           .join('-');
       }
       
-      return word.charAt(0).toUpperCase() + word.slice(1).toLocaleLowerCase('pl');
+      // Liczby zostawiamy
+      if (/^\d+/.test(word)) {
+        return word;
+      }
+      
+      // Standardowa kapitalizacja
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     })
     .join(' ');
+}
+
+// Klucz sortowania - typ ulicy + nazwa
+function getSortKey(name: string): string {
+  const normalized = name.toLowerCase();
+  
+  // Priorytet typów (alfabetycznie po typie, potem po nazwie)
+  let prefix = '5_'; // inne
+  
+  if (normalized.startsWith('aleja ') || normalized.startsWith('aleje ')) {
+    prefix = '1_aleja_';
+  } else if (normalized.startsWith('osiedle ')) {
+    prefix = '2_osiedle_';
+  } else if (normalized.startsWith('plac ')) {
+    prefix = '3_plac_';
+  } else if (normalized.startsWith('ulica ')) {
+    prefix = '4_ulica_';
+  }
+  
+  // Usuń przedrostek z nazwy do sortowania
+  const nameWithoutPrefix = normalized
+    .replace(/^(aleja|aleje|osiedle|plac|ulica)\s+/i, '');
+  
+  return prefix + nameWithoutPrefix;
 }
 
 // 1. WYSZUKAJ MIEJSCOWOŚCI
@@ -89,7 +137,7 @@ export async function searchCities(query: string) {
   }));
 }
 
-// 1.5. SPRAWDŹ CZY MIEJSCOWOŚĆ MA ULICE (prawdziwe, nie "brak ulicy")
+// 1.5. SPRAWDŹ CZY MIEJSCOWOŚĆ MA ULICE
 export async function cityHasStreets(simc: string): Promise<boolean> {
   const street = await prisma.searchUlica.findFirst({
     where: { 
@@ -119,29 +167,44 @@ export async function searchStreets(simc: string, query: string) {
     orderBy: {
       ulica: 'asc'
     },
-    take: 100  // więcej, bo będziemy deduplikować
+    take: 200
   });
   
-  // Wyczyść prefixy i deduplikuj
-  const uniqueStreets = new Map<string, typeof streets[0] & { ulica: string }>();
+  // Deduplikuj po id_ulicy, normalizuj nazwy
+  const uniqueStreets = new Map<string, { id: number; ulica: string; id_ulicy: string; sortKey: string }>();
   
   for (const street of streets) {
-    const cleaned = cleanStreetPrefix(street.ulica || '');
-    const fixed = fixStreetCapitalization(cleaned);
+    const idUlicy = street.id_ulicy || '';
     
-    if (!uniqueStreets.has(fixed)) {
-      uniqueStreets.set(fixed, { ...street, ulica: fixed });
-    }
+    // Pomijamy jeśli już mamy tę ulicę
+    if (uniqueStreets.has(idUlicy)) continue;
+    
+    // Normalizuj nazwę
+    const normalized = normalizeStreetName(street.ulica || '');
+    const fixed = fixCapitalization(normalized);
+    const sortKey = getSortKey(fixed);
+    
+    uniqueStreets.set(idUlicy, {
+      id: street.id,
+      ulica: fixed,
+      id_ulicy: idUlicy,
+      sortKey: sortKey,
+    });
   }
   
-  return Array.from(uniqueStreets.values()).slice(0, 50).map(street => ({
-    id: street.id,
-    ulica: street.ulica,
-    id_ulicy: street.id_ulicy,
+  // Sortuj po kluczu (typ + nazwa)
+  const sorted = Array.from(uniqueStreets.values())
+    .sort((a, b) => a.sortKey.localeCompare(b.sortKey, 'pl'));
+  
+  // Zwróć bez klucza sortowania
+  return sorted.slice(0, 50).map(s => ({
+    id: s.id,
+    ulica: s.ulica,
+    id_ulicy: s.id_ulicy,
   }));
 }
 
-// 3. WYSZUKAJ NUMERY NA ULICY (z deduplikacją)
+// 3. WYSZUKAJ NUMERY NA ULICY
 export async function searchNumbers(id_ulicy: string, query?: string) {
   if (!id_ulicy) return [];
   if (query !== undefined && query.length < 1) return [];

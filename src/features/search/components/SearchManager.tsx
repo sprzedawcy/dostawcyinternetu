@@ -3,7 +3,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { searchCities, searchStreets, searchNumbers, cityHasStreets } from "@/src/features/coverage/actions/search";
 
-// Helper do tworzenia slug
+interface Props {
+  content: Record<string, string>;
+}
+
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -14,30 +17,25 @@ function slugify(text: string): string {
     .replace(/[^a-z0-9-]/g, "");
 }
 
-export default function SearchManager() {
+export default function SearchManager({ content }: Props) {
   const router = useRouter();
   
-  // City
   const [cityQuery, setCityQuery] = useState('');
   const [cities, setCities] = useState<any[]>([]);
   const [selectedCity, setSelectedCity] = useState<any>(null);
   const [cityHasStreetsFlag, setCityHasStreetsFlag] = useState(true);
   
-  // Street
   const [streetQuery, setStreetQuery] = useState('');
   const [streets, setStreets] = useState<any[]>([]);
   const [selectedStreet, setSelectedStreet] = useState<any>(null);
   
-  // Number
   const [numberQuery, setNumberQuery] = useState('');
   const [numbers, setNumbers] = useState<any[]>([]);
   const [selectedNumber, setSelectedNumber] = useState<any>(null);
   const [loadingNumbers, setLoadingNumbers] = useState(false);
   
-  // Loading
   const [loading, setLoading] = useState(false);
 
-  // City search
   useEffect(() => {
     if (cityQuery.length < 2) {
       setCities([]);
@@ -50,7 +48,6 @@ export default function SearchManager() {
     return () => clearTimeout(timer);
   }, [cityQuery]);
 
-  // Street search
   useEffect(() => {
     if (!selectedCity || !cityHasStreetsFlag || streetQuery.length < 2) {
       setStreets([]);
@@ -63,18 +60,11 @@ export default function SearchManager() {
     return () => clearTimeout(timer);
   }, [streetQuery, selectedCity, cityHasStreetsFlag]);
 
-  // Number search (po wpisaniu 1 znaku)
   useEffect(() => {
-    if (!selectedCity) {
+    if (!selectedCity || numberQuery.length < 1) {
       setNumbers([]);
       return;
     }
-    
-    if (numberQuery.length < 1) {
-      setNumbers([]);
-      return;
-    }
-    
     const timer = setTimeout(async () => {
       setLoadingNumbers(true);
       const res = await searchNumbers(
@@ -84,7 +74,6 @@ export default function SearchManager() {
       setNumbers(res);
       setLoadingNumbers(false);
     }, 200);
-    
     return () => clearTimeout(timer);
   }, [numberQuery, selectedCity, selectedStreet]);
 
@@ -92,7 +81,6 @@ export default function SearchManager() {
     setSelectedCity(city);
     setCities([]);
     setCityQuery('');
-    
     const hasStreets = await cityHasStreets(city.simc);
     setCityHasStreetsFlag(hasStreets);
   };
@@ -102,70 +90,69 @@ export default function SearchManager() {
       alert('Wybierz miejscowość');
       return;
     }
-    
     setLoading(true);
-    
-    // Buduj URL
     const citySlug = slugify(selectedCity.nazwa);
     let url = `/internet/${citySlug}`;
-    
     if (selectedStreet) {
-      const streetSlug = slugify(selectedStreet.ulica);
-      url += `/${streetSlug}`;
+      url += `/${slugify(selectedStreet.ulica)}`;
     }
-    
     if (selectedNumber) {
       url += `/${selectedNumber.nr}`;
     }
-    
-    // Przekieruj na stronę
     router.push(url);
   };
 
+  const clearCity = () => {
+    setSelectedCity(null);
+    setSelectedStreet(null);
+    setSelectedNumber(null);
+    setCityHasStreetsFlag(true);
+    setNumberQuery('');
+  };
+
+  const clearStreet = () => {
+    setSelectedStreet(null);
+    setSelectedNumber(null);
+    setNumberQuery('');
+  };
+
+  const clearNumber = () => {
+    setSelectedNumber(null);
+    setNumberQuery('');
+  };
+
   return (
-    <div className="bg-white rounded-3xl shadow-xl p-8">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div className="search-card">
+      <div className="search-grid">
         {/* MIASTO */}
         <div>
-          <label className="block font-bold text-gray-900 mb-2">Miejscowość *</label>
+          <label className="form-label">{content['search.city_label']}</label>
           {selectedCity ? (
-            <div className="relative p-4 bg-green-100 border-4 border-green-500 rounded-xl">
-              <div className="font-bold text-green-900">{selectedCity.nazwa}</div>
-              <div className="text-xs text-green-700">{selectedCity.powiat}</div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedCity(null);
-                  setSelectedStreet(null);
-                  setSelectedNumber(null);
-                  setCityHasStreetsFlag(true);
-                  setNumberQuery('');
-                }}
-                className="absolute top-2 right-2 w-7 h-7 bg-red-600 text-white rounded-full font-bold hover:bg-red-700"
-              >
-                ✕
-              </button>
+            <div className="selected-box">
+              <div className="selected-box__title">{selectedCity.nazwa}</div>
+              <div className="selected-box__subtitle">{selectedCity.powiat}</div>
+              <button type="button" onClick={clearCity} className="selected-box__remove">✕</button>
             </div>
           ) : (
-            <div className="relative">
+            <div className="input-wrapper">
               <input
                 type="text"
                 value={cityQuery}
                 onChange={(e) => setCityQuery(e.target.value)}
                 placeholder="Wpisz nazwę..."
-                className="w-full p-4 border-4 border-gray-300 rounded-xl font-bold focus:border-blue-500 focus:outline-none text-gray-900"
+                className="form-input"
               />
               {cities.length > 0 && (
-                <div className="absolute z-50 w-full mt-2 bg-white border-4 border-gray-300 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
+                <div className="dropdown">
                   {cities.map((city) => (
                     <button
                       key={city.id}
                       type="button"
                       onClick={() => handleCitySelect(city)}
-                      className="w-full p-4 text-left hover:bg-blue-100 border-b-2 border-gray-200 last:border-0"
+                      className="dropdown-item"
                     >
-                      <div className="font-bold text-gray-900">{city.nazwa}</div>
-                      <div className="text-sm text-gray-600">{city.powiat}</div>
+                      <div className="dropdown-item__title">{city.nazwa}</div>
+                      <div className="dropdown-item__subtitle">{city.powiat}</div>
                     </button>
                   ))}
                 </div>
@@ -176,36 +163,26 @@ export default function SearchManager() {
 
         {/* ULICA */}
         <div>
-          <label className="block font-bold text-gray-900 mb-2">
-            Ulica {!cityHasStreetsFlag && selectedCity && '(brak)'}
+          <label className="form-label">
+            {content['search.street_label']} {!cityHasStreetsFlag && selectedCity && '(brak)'}
           </label>
           {selectedStreet ? (
-            <div className="relative p-4 bg-green-100 border-4 border-green-500 rounded-xl">
-              <div className="font-bold text-green-900">{selectedStreet.ulica}</div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedStreet(null);
-                  setSelectedNumber(null);
-                  setNumberQuery('');
-                }}
-                className="absolute top-2 right-2 w-7 h-7 bg-red-600 text-white rounded-full font-bold hover:bg-red-700"
-              >
-                ✕
-              </button>
+            <div className="selected-box">
+              <div className="selected-box__title">{selectedStreet.ulica}</div>
+              <button type="button" onClick={clearStreet} className="selected-box__remove">✕</button>
             </div>
           ) : (
-            <div className="relative">
+            <div className="input-wrapper">
               <input
                 type="text"
                 value={streetQuery}
                 onChange={(e) => setStreetQuery(e.target.value)}
                 placeholder={!selectedCity ? "Wybierz miasto" : !cityHasStreetsFlag ? "Brak ulic" : "Wpisz ulicę..."}
                 disabled={!selectedCity || !cityHasStreetsFlag}
-                className="w-full p-4 border-4 border-gray-300 rounded-xl font-bold focus:border-blue-500 focus:outline-none disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500 text-gray-900"
+                className="form-input"
               />
               {streets.length > 0 && (
-                <div className="absolute z-50 w-full mt-2 bg-white border-4 border-gray-300 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
+                <div className="dropdown">
                   {streets.map((street) => (
                     <button
                       key={street.id}
@@ -217,9 +194,9 @@ export default function SearchManager() {
                         setSelectedNumber(null);
                         setNumberQuery('');
                       }}
-                      className="w-full p-4 text-left hover:bg-blue-100 border-b-2 border-gray-200 last:border-0 font-bold text-gray-900"
+                      className="dropdown-item"
                     >
-                      {street.ulica}
+                      <div className="dropdown-item__title">{street.ulica}</div>
                     </button>
                   ))}
                 </div>
@@ -227,45 +204,36 @@ export default function SearchManager() {
             </div>
           )}
           {selectedCity && !selectedStreet && cityHasStreetsFlag && (
-            <p className="text-xs text-gray-500 mt-1">Opcjonalne</p>
+            <p className="form-hint">Opcjonalne</p>
           )}
         </div>
 
         {/* NUMER */}
         <div>
-          <label className="block font-bold text-gray-900 mb-2">Numer</label>
+          <label className="form-label">{content['search.number_label']}</label>
           {selectedNumber ? (
-            <div className="relative p-4 bg-green-100 border-4 border-green-500 rounded-xl">
-              <div className="font-bold text-green-900 text-center text-2xl">{selectedNumber.nr}</div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedNumber(null);
-                  setNumberQuery('');
-                }}
-                className="absolute top-2 right-2 w-7 h-7 bg-red-600 text-white rounded-full font-bold hover:bg-red-700"
-              >
-                ✕
-              </button>
+            <div className="selected-box">
+              <div className="selected-box__value">{selectedNumber.nr}</div>
+              <button type="button" onClick={clearNumber} className="selected-box__remove">✕</button>
             </div>
           ) : (
-            <div className="relative">
+            <div className="input-wrapper">
               <input
                 type="text"
                 value={numberQuery}
                 onChange={(e) => setNumberQuery(e.target.value)}
                 placeholder={!selectedCity ? "Wybierz miasto" : "Wpisz numer..."}
                 disabled={!selectedCity}
-                className="w-full p-4 border-4 border-gray-300 rounded-xl font-bold focus:border-blue-500 focus:outline-none disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500 text-gray-900"
+                className="form-input"
               />
               {loadingNumbers && (
-                <div className="absolute right-4 top-4">
-                  <div className="animate-spin h-6 w-6 border-4 border-blue-600 rounded-full border-t-transparent"></div>
+                <div className="spinner-container">
+                  <div className="spinner"></div>
                 </div>
               )}
               {numbers.length > 0 && !loadingNumbers && (
-                <div className="absolute z-50 w-full mt-2 bg-white border-4 border-gray-300 rounded-xl shadow-2xl max-h-60 overflow-y-auto">
-                  <div className="grid grid-cols-5 gap-1 p-2">
+                <div className="number-dropdown">
+                  <div className="number-grid">
                     {numbers.map((num) => (
                       <button
                         key={num.id}
@@ -275,7 +243,7 @@ export default function SearchManager() {
                           setNumberQuery('');
                           setNumbers([]);
                         }}
-                        className="p-2 bg-gray-100 hover:bg-blue-500 hover:text-white rounded font-bold text-sm text-gray-900"
+                        className="number-grid__item"
                       >
                         {num.nr}
                       </button>
@@ -286,18 +254,17 @@ export default function SearchManager() {
             </div>
           )}
           {selectedCity && !selectedNumber && (
-            <p className="text-xs text-gray-500 mt-1">Opcjonalne</p>
+            <p className="form-hint">Opcjonalne</p>
           )}
         </div>
       </div>
 
-      {/* PRZYCISK */}
       <button
         onClick={handleSearch}
         disabled={!selectedCity || loading}
-        className="w-full bg-black text-white py-5 rounded-xl text-xl font-black hover:bg-gray-800 disabled:bg-gray-300 transition-colors"
+        className="btn btn-search"
       >
-        {loading ? '⏳ PRZEKIEROWUJĘ...' : '🔍 SPRAWDŹ OFERTY'}
+        {loading ? '⏳ PRZEKIEROWUJĘ...' : `🔍 ${content['search.button']}`}
       </button>
     </div>
   );

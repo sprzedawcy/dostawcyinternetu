@@ -1,0 +1,30 @@
+// =====================================================
+// DODAJ DO prisma/schema.prisma
+// Modele dla ui_content i ui_config
+// =====================================================
+
+// Teksty UI wielojęzyczne
+model UiContent {
+  id          Int       @id @default(autoincrement())
+  key         String    @unique @db.VarChar(100)
+  value_pl    String    @db.Text
+  value_en    String?   @db.Text
+  value_ua    String?   @db.Text
+  category    String?   @db.VarChar(50)
+  description String?   @db.Text
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  @@index([category])
+  @@map("ui_content")
+}
+
+// Konfiguracja UI (JSONB)
+model UiConfig {
+  key         String    @id @db.VarChar(100)
+  value       Json
+  description String?   @db.Text
+  updated_at  DateTime  @updatedAt
+
+  @@map("ui_config")
+}

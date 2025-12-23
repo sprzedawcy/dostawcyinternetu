@@ -33,7 +33,6 @@ interface MiejscowoscSeo {
 export default async function MiejscowoscPage({ slug, locale }: Props) {
   const slugDecoded = decodeURIComponent(slug);
   
-  // Pobierz dane SEO z tabeli miejscowosci_seo
   const seoResults = await prisma.$queryRaw<MiejscowoscSeo[]>`
     SELECT 
       nazwa, slug, simc_count,
@@ -54,7 +53,6 @@ export default async function MiejscowoscPage({ slug, locale }: Props) {
     notFound();
   }
 
-  // Pobierz simc z tabeli polska
   const miejscowoscData = await prisma.polska.findFirst({
     where: { slug: slugDecoded },
     select: { simc: true }
@@ -62,7 +60,6 @@ export default async function MiejscowoscPage({ slug, locale }: Props) {
 
   const simc = miejscowoscData?.simc || '';
 
-  // Pobierz operatorów z zasięgiem
   const coverages = await prisma.operatorCoverage.findMany({
     where: { simc },
     select: { operator_id: true },
@@ -71,74 +68,58 @@ export default async function MiejscowoscPage({ slug, locale }: Props) {
 
   const operatorIds = coverages.map(c => c.operator_id);
 
-  // Pobierz oferty: kablowe od operatorów z zasięgiem + wszystkie mobilne
   const offers = await prisma.oferta.findMany({
     where: {
       aktywna: true,
       OR: [
         { typ_polaczenia: 'komorkowe' },
-        { 
-          typ_polaczenia: 'kablowe',
-          operator_id: { in: operatorIds.length > 0 ? operatorIds : [-1] }
-        }
+        { typ_polaczenia: 'kablowe', operator_id: { in: operatorIds.length > 0 ? operatorIds : [-1] } }
       ]
     },
-    include: {
-      operator: {
-        select: { id: true, nazwa: true, slug: true, logo_url: true }
-      }
-    },
-    orderBy: [
-      { wyrozoniona: 'desc' },
-      { lokalna: 'desc' },
-      { priorytet: 'desc' }
-    ]
+    include: { operator: { select: { id: true, nazwa: true, slug: true, logo_url: true } } },
+    orderBy: [{ wyrozoniona: 'desc' }, { lokalna: 'desc' }, { priorytet: 'desc' }]
   });
 
   const operators = [...new Map(offers.map(o => [o.operator.id, o.operator])).values()];
   const serializedOffers = JSON.parse(JSON.stringify(offers));
 
   return (
-    <div className="bg-gray-50">
+    <div className="page-wrapper">
       {/* Breadcrumbs */}
-      <div className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <nav className="flex items-center gap-2 text-sm text-gray-600">
-            <Link href="/" className="hover:text-blue-600">Strona główna</Link>
-            <span className="text-gray-400">/</span>
-            <span className="text-gray-900 font-medium">{seoData.nazwa}</span>
+      <div className="breadcrumbs-wrapper">
+        <div className="container">
+          <nav className="breadcrumbs">
+            <Link href="/" className="breadcrumbs__link">Strona główna</Link>
+            <span className="breadcrumbs__separator">/</span>
+            <span className="breadcrumbs__current">{seoData.nazwa}</span>
           </nav>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Hero section z SEO */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-black text-gray-900 mb-4">
+      <div className="container section">
+        {/* Hero section */}
+        <div className="page-hero">
+          <h1 className="page-hero__title">
             {seoData.h1 || `Internet ${seoData.nazwa}`}
           </h1>
           
-          {/* Intro text z tabeli lub fallback */}
           {seoData.opis_krotki ? (
-            <p className="text-gray-800 text-lg leading-relaxed">
-              {seoData.opis_krotki}
-            </p>
+            <p className="page-hero__description">{seoData.opis_krotki}</p>
           ) : (
-            <p className="text-gray-800 text-lg leading-relaxed">
+            <p className="page-hero__description">
               Porównaj {offers.length} ofert internetu w {seoData.nazwa}. Sprawdź dostępność i ceny.
             </p>
           )}
 
-          {/* Info o konieczności weryfikacji */}
-          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm">
+          <span className="status-badge status-badge--info">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Wybierz ofertę i podaj dokładny adres, aby sprawdzić dostępność
-          </div>
+          </span>
         </div>
 
-        {/* Lista ofert z modalem */}
+        {/* Lista ofert */}
         <OffersList 
           offers={serializedOffers} 
           operators={operators}
@@ -148,29 +129,29 @@ export default async function MiejscowoscPage({ slug, locale }: Props) {
           level="miasto"
         />
 
-        {/* Artykuł SEO pod ofertami */}
+        {/* Artykuł SEO */}
         {seoData.article_text && (
-          <div className="mt-12 bg-white rounded-xl border border-gray-200 p-6 md:p-8">
+          <div className="content-box">
             <div 
-              className="[&>h2]:text-xl [&>h2]:font-bold [&>h2]:text-gray-900 [&>h2]:mb-4 [&>p]:text-gray-900 [&>p]:leading-relaxed [&>p]:mb-4"
+              className="article-content"
               dangerouslySetInnerHTML={{ __html: seoData.article_text }}
             />
           </div>
         )}
 
-        {/* FAQ w stylu cytatów */}
+        {/* FAQ */}
         {seoData.faq && Array.isArray(seoData.faq) && seoData.faq.length > 0 && (
-          <div className="mt-8 bg-white rounded-xl border border-gray-200 p-6 md:p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">
+          <div className="content-box">
+            <h2 className="content-box__title">
               Często zadawane pytania - Internet {seoData.nazwa}
             </h2>
-            <div className="space-y-6">
+            <div className="faq-list">
               {seoData.faq.map((item: any, index: number) => (
-                <div key={index} className="border-l-4 border-blue-500 pl-4">
-                  <p className="font-semibold text-gray-900 mb-2">
+                <div key={index} className="faq-item">
+                  <p className="faq-item__question">
                     „{item.question || item.pytanie}"
                   </p>
-                  <p className="text-gray-700 leading-relaxed">
+                  <p className="faq-item__answer">
                     {item.answer || item.odpowiedz}
                   </p>
                 </div>
@@ -179,22 +160,22 @@ export default async function MiejscowoscPage({ slug, locale }: Props) {
           </div>
         )}
 
-        {/* Powiązane artykuły (blog_tags) */}
+        {/* Powiązane artykuły */}
         {seoData.blog_tags && Array.isArray(seoData.blog_tags) && seoData.blog_tags.length > 0 && (
-          <div className="mt-8 bg-white rounded-xl border border-gray-200 p-6 md:p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+          <div className="content-box">
+            <h2 className="content-box__title">
               Artykuły o internecie w {seoData.nazwa}
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="article-grid">
               {seoData.blog_tags.map((article: any, index: number) => (
                 <Link 
                   key={index}
                   href={article.url || `/blog/${article.slug}`}
-                  className="p-4 border border-gray-100 rounded-lg hover:border-blue-200 hover:bg-blue-50 transition-colors"
+                  className="article-card"
                 >
-                  <h3 className="font-medium text-gray-900">{article.title || article.tytul}</h3>
+                  <h3 className="article-card__title">{article.title || article.tytul}</h3>
                   {article.excerpt && (
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{article.excerpt}</p>
+                    <p className="article-card__excerpt">{article.excerpt}</p>
                   )}
                 </Link>
               ))}

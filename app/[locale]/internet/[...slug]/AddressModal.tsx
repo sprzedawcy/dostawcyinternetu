@@ -8,16 +8,14 @@ interface Props {
   onConfirm: (address: { ulica: string; nr: string; id_ulicy: string }) => void;
   miejscowosc: string;
   simc: string;
-  /** Jeśli mamy już ulicę (poziom UlicaPage), pytamy tylko o numer */
   prefilledUlica?: { ulica: string; id_ulicy: string };
 }
 
-// Sanityzacja inputu - usuwa potencjalnie szkodliwe znaki
 function sanitize(input: string): string {
   return input
-    .replace(/[<>'"`;(){}[\]\\]/g, '') // usuń znaki specjalne
+    .replace(/[<>'"`;(){}[\]\\]/g, '')
     .trim()
-    .slice(0, 100); // max 100 znaków
+    .slice(0, 100);
 }
 
 export default function AddressModal({ 
@@ -31,31 +29,24 @@ export default function AddressModal({
   const [hasStreets, setHasStreets] = useState(true);
   const [streets, setStreets] = useState<any[]>([]);
   const [numbers, setNumbers] = useState<any[]>([]);
-  
   const [streetQuery, setStreetQuery] = useState('');
   const [numberQuery, setNumberQuery] = useState('');
-  
   const [selectedStreet, setSelectedStreet] = useState<any>(prefilledUlica || null);
   const [selectedNumber, setSelectedNumber] = useState<any>(null);
-  
   const [loading, setLoading] = useState(false);
 
-  // Sprawdź czy miejscowość ma ulice
   useEffect(() => {
     if (!simc) return;
     cityHasStreets(simc).then(setHasStreets);
   }, [simc]);
 
-  // Szukaj ulic
   useEffect(() => {
     if (!simc || !hasStreets || prefilledUlica) return;
-    
     const query = sanitize(streetQuery);
     if (query.length < 2) {
       setStreets([]);
       return;
     }
-    
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
@@ -66,24 +57,20 @@ export default function AddressModal({
       }
       setLoading(false);
     }, 250);
-    
     return () => clearTimeout(timer);
   }, [streetQuery, simc, hasStreets, prefilledUlica]);
 
-  // Szukaj numerów
   useEffect(() => {
     const id_ulicy = selectedStreet?.id_ulicy || (hasStreets ? null : '00000');
     if (!id_ulicy) {
       setNumbers([]);
       return;
     }
-    
     const query = sanitize(numberQuery);
     if (query.length < 1) {
       setNumbers([]);
       return;
     }
-    
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
@@ -94,11 +81,9 @@ export default function AddressModal({
       }
       setLoading(false);
     }, 200);
-    
     return () => clearTimeout(timer);
   }, [numberQuery, selectedStreet, hasStreets]);
 
-  // Reset przy zamknięciu
   useEffect(() => {
     if (!isOpen) {
       if (!prefilledUlica) {
@@ -114,7 +99,6 @@ export default function AddressModal({
 
   const handleConfirm = useCallback(() => {
     if (!selectedNumber) return;
-    
     onConfirm({
       ulica: selectedStreet?.ulica || '',
       nr: selectedNumber.nr,
@@ -122,7 +106,6 @@ export default function AddressModal({
     });
   }, [selectedStreet, selectedNumber, onConfirm]);
 
-  // ESC zamyka modal
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -143,54 +126,38 @@ export default function AddressModal({
   const canConfirm = selectedNumber !== null;
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black/60" />
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-backdrop" />
       
-      {/* Modal */}
-      <div 
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
+      <div className="modal" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5 text-white">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors"
-            aria-label="Zamknij"
-          >
+        <div className="modal__header">
+          <button onClick={onClose} className="modal__close" aria-label="Zamknij">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          <h2 className="text-xl font-bold">
+          <h2 className="modal__title">
             {prefilledUlica ? 'Podaj numer budynku' : 'Podaj dokładny adres'}
           </h2>
-          <p className="text-blue-100 text-sm mt-1">
-            Sprawdzimy dostępność oferty
-          </p>
+          <p className="modal__subtitle">Sprawdzimy dostępność oferty</p>
         </div>
 
-        {/* Content */}
-        <div className="p-5 space-y-4">
+        {/* Body */}
+        <div className="modal__body">
           {/* Miejscowość - readonly */}
-          <div className="p-3 bg-gray-100 rounded-xl">
-            <p className="text-xs text-gray-500 mb-1">Miejscowość</p>
-            <p className="font-bold text-gray-900">{miejscowosc}</p>
+          <div className="form-readonly">
+            <p className="form-readonly__label">Miejscowość</p>
+            <p className="form-readonly__value">{miejscowosc}</p>
           </div>
 
           {/* Ulica */}
           {hasStreets && !prefilledUlica && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ulica
-              </label>
+              <label className="form-label--medium">Ulica</label>
               {selectedStreet ? (
-                <div className="relative p-3 bg-green-50 border-2 border-green-500 rounded-xl">
-                  <span className="font-bold text-green-900">{selectedStreet.ulica}</span>
+                <div className="selected-box selected-box--modal">
+                  <span className="selected-box__title">{selectedStreet.ulica}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -198,28 +165,28 @@ export default function AddressModal({
                       setSelectedNumber(null);
                       setNumberQuery('');
                     }}
-                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full text-sm font-bold hover:bg-red-600"
+                    className="selected-box__remove selected-box__remove--small"
                   >
                     ×
                   </button>
                 </div>
               ) : (
-                <div className="relative">
+                <div className="input-wrapper">
                   <input
                     type="text"
                     value={streetQuery}
                     onChange={e => setStreetQuery(sanitize(e.target.value))}
                     placeholder="Wpisz nazwę ulicy..."
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none text-gray-900"
+                    className="form-input form-input--modal"
                     autoComplete="off"
                   />
                   {loading && (
-                    <div className="absolute right-3 top-3">
-                      <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="spinner-container spinner-container--modal">
+                      <div className="spinner spinner--small" />
                     </div>
                   )}
                   {streets.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    <div className="dropdown dropdown--modal">
                       {streets.map((street, i) => (
                         <button
                           key={`${street.id_ulicy}-${i}`}
@@ -229,9 +196,9 @@ export default function AddressModal({
                             setStreets([]);
                             setStreetQuery('');
                           }}
-                          className="w-full p-3 text-left hover:bg-blue-50 border-b border-gray-100 last:border-0 text-gray-900"
+                          className="dropdown-item dropdown-item--modal"
                         >
-                          {street.ulica}
+                          <span className="dropdown-item__title">{street.ulica}</span>
                         </button>
                       ))}
                     </div>
@@ -243,50 +210,48 @@ export default function AddressModal({
 
           {/* Prefilled ulica */}
           {prefilledUlica && (
-            <div className="p-3 bg-gray-100 rounded-xl">
-              <p className="text-xs text-gray-500 mb-1">Ulica</p>
-              <p className="font-bold text-gray-900">{prefilledUlica.ulica}</p>
+            <div className="form-readonly">
+              <p className="form-readonly__label">Ulica</p>
+              <p className="form-readonly__value">{prefilledUlica.ulica}</p>
             </div>
           )}
 
           {/* Numer budynku */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Numer budynku
-            </label>
+            <label className="form-label--medium">Numer budynku</label>
             {selectedNumber ? (
-              <div className="relative p-3 bg-green-50 border-2 border-green-500 rounded-xl text-center">
-                <span className="font-bold text-green-900 text-xl">{selectedNumber.nr}</span>
+              <div className="selected-box selected-box--modal">
+                <span className="selected-box__value selected-box__value--modal">{selectedNumber.nr}</span>
                 <button
                   type="button"
                   onClick={() => {
                     setSelectedNumber(null);
                     setNumberQuery('');
                   }}
-                  className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full text-sm font-bold hover:bg-red-600"
+                  className="selected-box__remove selected-box__remove--small"
                 >
                   ×
                 </button>
               </div>
             ) : (
-              <div className="relative">
+              <div className="input-wrapper">
                 <input
                   type="text"
                   value={numberQuery}
                   onChange={e => setNumberQuery(sanitize(e.target.value))}
                   placeholder={needsStreet ? "Najpierw wybierz ulicę..." : "Wpisz numer..."}
                   disabled={needsStreet}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="form-input form-input--modal"
                   autoComplete="off"
                 />
                 {loading && !needsStreet && (
-                  <div className="absolute right-3 top-3">
-                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="spinner-container spinner-container--modal">
+                    <div className="spinner spinner--small" />
                   </div>
                 )}
                 {numbers.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto p-2">
-                    <div className="grid grid-cols-5 gap-1">
+                  <div className="number-dropdown number-dropdown--modal">
+                    <div className="number-grid">
                       {numbers.map((num, i) => (
                         <button
                           key={`${num.id}-${i}`}
@@ -296,7 +261,7 @@ export default function AddressModal({
                             setNumbers([]);
                             setNumberQuery('');
                           }}
-                          className="p-2 bg-gray-100 hover:bg-blue-500 hover:text-white rounded font-bold text-sm text-gray-900 transition-colors"
+                          className="number-grid__item"
                         >
                           {num.nr}
                         </button>
@@ -312,12 +277,12 @@ export default function AddressModal({
           <button
             onClick={handleConfirm}
             disabled={!canConfirm}
-            className="w-full py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed text-lg"
+            className="btn btn-success btn-success--large"
           >
             Sprawdź dostępność
           </button>
 
-          <p className="text-xs text-gray-500 text-center">
+          <p className="modal__footer">
             Podanie adresu pozwoli zweryfikować dostępność usług
           </p>
         </div>

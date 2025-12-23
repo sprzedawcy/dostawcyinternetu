@@ -1,90 +1,97 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import MiejscowoscPage from "./MiejscowoscPage";
-import OfferPage from "./OfferPage";
+import UlicaPage from "./UlicaPage";
+import AdresPage from "./AdresPage";
 
 interface Props {
   params: Promise<{ slug: string[]; locale: string }>;
-  searchParams: Promise<{ info?: string; adres?: string }>;
 }
 
-export default async function InternetCatchAllPage({ params, searchParams }: Props) {
+export default async function InternetCatchAllPage({ params }: Props) {
   const { slug, locale } = await params;
-  const searchParamsResolved = await searchParams;
 
   // 1 segment = miejscowość (/internet/warszawa)
   if (slug.length === 1) {
-    const miejscowoscSlug = slug[0];
-    return <MiejscowoscPage slug={miejscowoscSlug} locale={locale} />;
+    return <MiejscowoscPage slug={slug[0]} locale={locale} />;
   }
 
-  // 2 segmenty = operator/oferta (/internet/orange/nazwa-oferty)
+  // 2 segmenty = ulica (/internet/warszawa/marszalkowska)
   if (slug.length === 2) {
-    const [operatorSlug, offerSlug] = slug;
-    return <OfferPage 
-      operatorSlug={operatorSlug} 
-      offerSlug={offerSlug} 
-      locale={locale}
-      searchParams={searchParamsResolved}
-    />;
+    return (
+      <UlicaPage 
+        miejscowoscSlug={slug[0]} 
+        ulicaSlug={slug[1]} 
+        locale={locale} 
+      />
+    );
+  }
+
+  // 3 segmenty = adres (/internet/warszawa/marszalkowska/15)
+  if (slug.length === 3) {
+    return (
+      <AdresPage 
+        miejscowoscSlug={slug[0]} 
+        ulicaSlug={slug[1]} 
+        numer={slug[2]}
+        locale={locale} 
+      />
+    );
   }
 
   // Inne = 404
   notFound();
 }
 
-export async function generateMetadata({ params, searchParams }: Props) {
+export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
-  const { info } = await searchParams;
 
+  // Miejscowość
   if (slug.length === 1) {
-    const miejscowoscSlug = slug[0];
-    const miejscowoscData = await prisma.polska.findFirst({
-      where: { slug: miejscowoscSlug },
+    const data = await prisma.polska.findFirst({
+      where: { slug: slug[0] },
       select: { miejscowosc: true }
     });
 
-    if (!miejscowoscData) {
-      return { title: 'Miejscowosc nie znaleziona' };
-    }
+    if (!data) return { title: 'Nie znaleziono' };
 
     return {
-      title: `Internet ${miejscowoscData.miejscowosc} - Porownaj oferty | DostawcyInternetu.pl`,
-      description: `Sprawdz dostepne oferty internetu w ${miejscowoscData.miejscowosc}. Porownaj ceny, predkosci i operatorow.`
+      title: `Internet ${data.miejscowosc} - Porównaj oferty | DostawcyInternetu.pl`,
+      description: `Sprawdź oferty internetu w ${data.miejscowosc}. Porównaj ceny i prędkości.`
     };
   }
 
+  // Ulica
   if (slug.length === 2) {
-    const [operatorSlug, offerSlug] = slug;
-    
-    const operator = await prisma.operator.findFirst({
-      where: { slug: operatorSlug }
+    const data = await prisma.polska.findFirst({
+      where: { slug: slug[0] },
+      select: { miejscowosc: true }
     });
 
-    if (!operator) {
-      return { title: 'Oferta nie znaleziona' };
-    }
+    if (!data) return { title: 'Nie znaleziono' };
 
-    const offer = await prisma.oferta.findFirst({
-      where: {
-        operator_id: operator.id,
-        OR: [
-          { custom_url: offerSlug },
-          { id: isNaN(parseInt(offerSlug)) ? -1 : parseInt(offerSlug) }
-        ]
-      },
-      include: { operator: true }
-    });
-
-    if (!offer) {
-      return { title: 'Oferta nie znaleziona' };
-    }
-
-    const prefix = info === '1' ? 'Szczegoly: ' : '';
+    const ulica = slug[1].replace(/-/g, ' ');
 
     return {
-      title: `${prefix}${offer.nazwa} - ${offer.operator.nazwa} | DostawcyInternetu.pl`,
-      description: `${offer.download_mbps} Mb/s za ${offer.abonament} zl/mies. ${offer.technologia || ''}. Sprawdz oferte ${offer.operator.nazwa}.`
+      title: `Internet ${ulica}, ${data.miejscowosc} | DostawcyInternetu.pl`,
+      description: `Oferty internetu na ${ulica} w ${data.miejscowosc}. Sprawdź dostępność.`
+    };
+  }
+
+  // Adres
+  if (slug.length === 3) {
+    const data = await prisma.polska.findFirst({
+      where: { slug: slug[0] },
+      select: { miejscowosc: true }
+    });
+
+    if (!data) return { title: 'Nie znaleziono' };
+
+    const ulica = slug[1].replace(/-/g, ' ');
+
+    return {
+      title: `Internet ${ulica} ${slug[2]}, ${data.miejscowosc} | DostawcyInternetu.pl`,
+      description: `Dostępne oferty internetu pod adresem ${ulica} ${slug[2]}, ${data.miejscowosc}.`
     };
   }
 

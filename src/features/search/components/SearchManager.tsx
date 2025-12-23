@@ -1,10 +1,22 @@
 "use client"
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { searchCities, searchStreets, searchNumbers, cityHasStreets } from "@/src/features/coverage/actions/search";
-import { searchOffersForAddress } from "@/src/features/offers/actions/search";
-import OfferResults from "./OfferResults";
+
+// Helper do tworzenia slug
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ł/g, "l")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
 
 export default function SearchManager() {
+  const router = useRouter();
+  
   // City
   const [cityQuery, setCityQuery] = useState('');
   const [cities, setCities] = useState<any[]>([]);
@@ -22,8 +34,7 @@ export default function SearchManager() {
   const [selectedNumber, setSelectedNumber] = useState<any>(null);
   const [loadingNumbers, setLoadingNumbers] = useState(false);
   
-  // Results
-  const [results, setResults] = useState<any>(null);
+  // Loading
   const [loading, setLoading] = useState(false);
 
   // City search
@@ -93,36 +104,27 @@ export default function SearchManager() {
     }
     
     setLoading(true);
-    const res = await searchOffersForAddress(
-      selectedCity.simc,
-      selectedStreet?.id_ulicy || '00000',
-      selectedNumber?.nr || ''
-    );
-    setResults(res);
-    setLoading(false);
+    
+    // Buduj URL
+    const citySlug = slugify(selectedCity.nazwa);
+    let url = `/internet/${citySlug}`;
+    
+    if (selectedStreet) {
+      const streetSlug = slugify(selectedStreet.ulica);
+      url += `/${streetSlug}`;
+    }
+    
+    if (selectedNumber) {
+      url += `/${selectedNumber.nr}`;
+    }
+    
+    // Przekieruj na stronę
+    router.push(url);
   };
-
-  const handleNewSearch = () => {
-    setResults(null);
-    setSelectedCity(null);
-    setSelectedStreet(null);
-    setSelectedNumber(null);
-    setCityHasStreetsFlag(true);
-    setNumberQuery('');
-  };
-
-  // Jeśli są wyniki - pokaż komponent wyników
-  if (results) {
-    return (
-      <div className="bg-white rounded-3xl shadow-xl p-8">
-        <OfferResults results={results} onClose={handleNewSearch} />
-      </div>
-    );
-  }
 
   return (
     <div className="bg-white rounded-3xl shadow-xl p-8">
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {/* MIASTO */}
         <div>
           <label className="block font-bold text-gray-900 mb-2">Miejscowość *</label>
@@ -137,7 +139,6 @@ export default function SearchManager() {
                   setSelectedStreet(null);
                   setSelectedNumber(null);
                   setCityHasStreetsFlag(true);
-                  setResults(null);
                   setNumberQuery('');
                 }}
                 className="absolute top-2 right-2 w-7 h-7 bg-red-600 text-white rounded-full font-bold hover:bg-red-700"
@@ -152,7 +153,7 @@ export default function SearchManager() {
                 value={cityQuery}
                 onChange={(e) => setCityQuery(e.target.value)}
                 placeholder="Wpisz nazwę..."
-                className="w-full p-4 border-4 border-gray-300 rounded-xl font-bold focus:border-blue-500 focus:outline-none"
+                className="w-full p-4 border-4 border-gray-300 rounded-xl font-bold focus:border-blue-500 focus:outline-none text-gray-900"
               />
               {cities.length > 0 && (
                 <div className="absolute z-50 w-full mt-2 bg-white border-4 border-gray-300 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
@@ -186,7 +187,6 @@ export default function SearchManager() {
                 onClick={() => {
                   setSelectedStreet(null);
                   setSelectedNumber(null);
-                  setResults(null);
                   setNumberQuery('');
                 }}
                 className="absolute top-2 right-2 w-7 h-7 bg-red-600 text-white rounded-full font-bold hover:bg-red-700"
@@ -202,7 +202,7 @@ export default function SearchManager() {
                 onChange={(e) => setStreetQuery(e.target.value)}
                 placeholder={!selectedCity ? "Wybierz miasto" : !cityHasStreetsFlag ? "Brak ulic" : "Wpisz ulicę..."}
                 disabled={!selectedCity || !cityHasStreetsFlag}
-                className="w-full p-4 border-4 border-gray-300 rounded-xl font-bold focus:border-blue-500 focus:outline-none disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
+                className="w-full p-4 border-4 border-gray-300 rounded-xl font-bold focus:border-blue-500 focus:outline-none disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500 text-gray-900"
               />
               {streets.length > 0 && (
                 <div className="absolute z-50 w-full mt-2 bg-white border-4 border-gray-300 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
@@ -217,7 +217,7 @@ export default function SearchManager() {
                         setSelectedNumber(null);
                         setNumberQuery('');
                       }}
-                      className="w-full p-4 text-left hover:bg-blue-100 border-b-2 border-gray-200 last:border-0 font-bold"
+                      className="w-full p-4 text-left hover:bg-blue-100 border-b-2 border-gray-200 last:border-0 font-bold text-gray-900"
                     >
                       {street.ulica}
                     </button>
@@ -241,7 +241,6 @@ export default function SearchManager() {
                 type="button"
                 onClick={() => {
                   setSelectedNumber(null);
-                  setResults(null);
                   setNumberQuery('');
                 }}
                 className="absolute top-2 right-2 w-7 h-7 bg-red-600 text-white rounded-full font-bold hover:bg-red-700"
@@ -257,7 +256,7 @@ export default function SearchManager() {
                 onChange={(e) => setNumberQuery(e.target.value)}
                 placeholder={!selectedCity ? "Wybierz miasto" : "Wpisz numer..."}
                 disabled={!selectedCity}
-                className="w-full p-4 border-4 border-gray-300 rounded-xl font-bold focus:border-blue-500 focus:outline-none disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
+                className="w-full p-4 border-4 border-gray-300 rounded-xl font-bold focus:border-blue-500 focus:outline-none disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500 text-gray-900"
               />
               {loadingNumbers && (
                 <div className="absolute right-4 top-4">
@@ -276,7 +275,7 @@ export default function SearchManager() {
                           setNumberQuery('');
                           setNumbers([]);
                         }}
-                        className="p-2 bg-gray-100 hover:bg-blue-500 hover:text-white rounded font-bold text-sm"
+                        className="p-2 bg-gray-100 hover:bg-blue-500 hover:text-white rounded font-bold text-sm text-gray-900"
                       >
                         {num.nr}
                       </button>
@@ -296,9 +295,9 @@ export default function SearchManager() {
       <button
         onClick={handleSearch}
         disabled={!selectedCity || loading}
-        className="w-full bg-black text-white py-5 rounded-xl text-xl font-black hover:bg-gray-800 disabled:bg-gray-300"
+        className="w-full bg-black text-white py-5 rounded-xl text-xl font-black hover:bg-gray-800 disabled:bg-gray-300 transition-colors"
       >
-        {loading ? '⏳ SZUKAM...' : '🔍 SPRAWDŹ OFERTY'}
+        {loading ? '⏳ PRZEKIEROWUJĘ...' : '🔍 SPRAWDŹ OFERTY'}
       </button>
     </div>
   );

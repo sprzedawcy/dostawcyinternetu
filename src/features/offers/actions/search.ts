@@ -70,6 +70,20 @@ export async function getAddressData(simc: string, id_ulicy: string, nr: string)
 export async function searchOffersForAddress(simc: string, id_ulicy: string, nr: string) {
   const addressData = await getAddressData(simc, id_ulicy, nr);
   
+  // Pobierz dane SEO miejscowości
+  let seoData = null;
+  if (addressData?.slug) {
+    const seoResults = await prisma.$queryRaw<any[]>`
+      SELECT 
+        opis_krotki, article_text, faq, h1,
+        operatorzy, operatorow_db
+      FROM miejscowosci_seo 
+      WHERE slug = ${addressData.slug}
+      LIMIT 1
+    `;
+    seoData = seoResults[0] || null;
+  }
+  
   // Pobierz WSZYSTKIE aktywne oferty
   const allOffers = await prisma.oferta.findMany({
     where: { aktywna: true },
@@ -95,7 +109,8 @@ export async function searchOffersForAddress(simc: string, id_ulicy: string, nr:
       allOffersCount: mobileOffers.length,
       hasKpoFerc: false,
       hasCable: false,
-      bts: []
+      bts: [],
+      seoData: null
     };
   }
   
@@ -112,7 +127,7 @@ export async function searchOffersForAddress(simc: string, id_ulicy: string, nr:
       }
     }
     
-    // Oferty lokalne - sprawdź czy miejscowość pasuje (porównuj bez powiatu)
+    // Oferty lokalne - sprawdź czy miejscowość pasuje (porównaj bez powiatu)
     if (offer.lokalna && offer.lokalizacje.length > 0) {
       const locationNames = offer.lokalizacje.map(l => cleanMiejscowoscName(l.nazwa));
       if (!locationNames.includes(addressMiejscowosc)) {
@@ -158,7 +173,8 @@ export async function searchOffersForAddress(simc: string, id_ulicy: string, nr:
     allOffersCount: interleavedOffers.length,
     hasKpoFerc: !!addressData.kpo_ferc,
     hasCable,
-    bts: addressData.bts || []
+    bts: addressData.bts || [],
+    seoData
   };
 }
 

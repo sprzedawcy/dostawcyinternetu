@@ -692,3 +692,38 @@ model OperatorPromotion {
   @@index([aktywna])
   @@map("operator_promotions")
 }
+
+// ========== ZGŁOSZENIA KPO/FERC - "Powiadom mnie o budowie światłowodu" ==========
+
+model KpoLead {
+  id            Int       @id @default(autoincrement())
+  
+  // Adres
+  miejscowosc   String
+  ulica         String?
+  nr            String?
+  simc          String?   @db.VarChar(7)
+  id_ulicy      String?   @db.VarChar(7)
+  
+  // Dane kontaktowe
+  imie          String
+  telefon       String
+  email         String?
+  uwagi         String?   @db.Text
+  
+  // Status: nowy, kontakt, zrealizowany, anulowany
+  status        String    @default("nowy")
+  notatka_admin String?   @db.Text
+  
+  // Metadata
+  ip_address    String?
+  user_agent    String?   @db.Text
+  
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  @@index([status])
+  @@index([simc])
+  @@index([created_at])
+  @@map("kpo_leads")
+}

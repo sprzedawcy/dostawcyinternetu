@@ -32,6 +32,7 @@ model SearchUlica {
 
   @@index([teryt_powiat, ulica_norm])
   @@index([miasto_nazwa])
+  @@index([simc])
   @@map("search_ulice")
 }
 
@@ -260,6 +261,8 @@ model polska {
   @@index([lon, lat], map: "idx_polska_coords")
   @@index([slug], map: "idx_polska_slug")
   @@index([miejscowosc], map: "idx_polska_miejscowosc")
+  @@index([simc], map: "idx_polska_simc")
+  @@index([id_ulicy], map: "idx_polska_id_ulicy")
 }
 
 model simc {

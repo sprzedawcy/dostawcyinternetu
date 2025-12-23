@@ -51,7 +51,7 @@ export default function Footer() {
                 alt="DostawcyInternetu.pl"
                 width={180}
                 height={32}
-                className="h-10 w-auto"
+                className="h-7 w-auto"
               />
             </Link>
             <p className="text-sm text-gray-400 leading-relaxed mb-4">

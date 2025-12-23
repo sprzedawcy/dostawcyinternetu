@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import type { Metadata } from "next";
-import OperatorSearch from "./OperatorSearch";
+import CitySearch from "./CitySearch";
 import OperatorBadge from "./OperatorBadge";
 import LocalOperatorsList from "./LocalOperatorsList";
 import { cleanOperatorName } from "@/src/lib/operator-utils";
@@ -12,11 +12,14 @@ export const metadata: Metadata = {
 };
 
 export default async function OperatorsListPage() {
-  // Pobierz WSZYSTKICH operatorów (nie tylko aktywnych)
+  // Pobierz WSZYSTKICH operatorów
   const operators = await prisma.operator.findMany({
     include: {
       _count: { select: { oferty: { where: { aktywna: true } } } },
-      oferty: { where: { aktywna: true }, select: { abonament: true, download_mbps: true } }
+      oferty: { 
+        where: { aktywna: true }, 
+        select: { abonament: true, download_mbps: true, typ_uslugi: true } 
+      }
     },
     orderBy: { nazwa: 'asc' }
   });
@@ -26,15 +29,6 @@ export default async function OperatorsListPage() {
   const komorkowi = operators.filter(o => o.typ === 'komórkowy');
   const regionalni = operators.filter(o => o.typ === 'regionalny');
   const lokalni = operators.filter(o => o.typ === 'lokalny' || !o.typ);
-
-  // Dla wyszukiwarki
-  const operatorsForSearch = operators.map(op => ({
-    id: op.id,
-    nazwa: op.nazwa,
-    slug: op.slug,
-    typ: op.typ,
-    logo_url: op.logo_url,
-  }));
 
   // Dla listy lokalnych
   const lokalniForList = lokalni.map(op => ({
@@ -48,12 +42,59 @@ export default async function OperatorsListPage() {
     totalOffers: op._count.oferty,
   }));
 
-  // Statystyki
-  const getStats = (op: typeof operators[0]) => ({
-    totalOffers: op._count.oferty,
-    minPrice: op.oferty.length > 0 ? Math.min(...op.oferty.map(o => parseFloat(o.abonament?.toString() || '0'))) : null,
-    maxSpeed: op.oferty.length > 0 ? Math.max(...op.oferty.map(o => o.download_mbps || 0)) : null
-  });
+  // Statystyki z podziałem na typ usługi
+  const getStats = (op: typeof operators[0]) => {
+    const stacjonarne = op.oferty.filter(o => o.typ_uslugi === 'stacjonarny' || !o.typ_uslugi).length;
+    const komorkowe = op.oferty.filter(o => o.typ_uslugi === 'komórkowy').length;
+    const minPrice = op.oferty.length > 0 
+      ? Math.min(...op.oferty.map(o => parseFloat(o.abonament?.toString() || '0'))) 
+      : null;
+    
+    return {
+      totalOffers: op._count.oferty,
+      stacjonarne,
+      komorkowe,
+      minPrice: minPrice && minPrice > 0 ? minPrice : null,
+    };
+  };
+
+  // Komponent dla statystyk ofert
+  const OfferStats = ({ stats }: { stats: ReturnType<typeof getStats> }) => {
+    if (stats.totalOffers === 0) return null;
+    
+    const hasMultipleTypes = stats.stacjonarne > 0 && stats.komorkowe > 0;
+    
+    if (hasMultipleTypes) {
+      return (
+        <div className="flex flex-wrap gap-1.5 text-xs">
+          <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full font-medium flex items-center gap-1">
+            <span>🏠</span> {stats.stacjonarne}
+          </span>
+          <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-full font-medium flex items-center gap-1">
+            <span>📱</span> {stats.komorkowe}
+          </span>
+          {stats.minPrice && (
+            <span className="px-2 py-1 bg-green-50 text-green-700 rounded-full font-medium">
+              od {stats.minPrice} zł
+            </span>
+          )}
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex flex-wrap gap-1.5 text-xs">
+        <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">
+          {stats.totalOffers} ofert
+        </span>
+        {stats.minPrice && (
+          <span className="px-2 py-1 bg-green-50 text-green-700 rounded-full font-medium">
+            od {stats.minPrice} zł
+          </span>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -68,7 +109,7 @@ export default async function OperatorsListPage() {
         </div>
       </div>
 
-      {/* Header z wyszukiwarką */}
+      {/* Header z wyszukiwarką miejscowości */}
       <div className="bg-gradient-to-b from-blue-600 to-blue-700 text-white">
         <div className="max-w-6xl mx-auto px-4 py-12">
           <h1 className="text-3xl md:text-4xl font-black mb-3">
@@ -78,8 +119,11 @@ export default async function OperatorsListPage() {
             Porównaj oferty <strong className="text-white">{operators.length}</strong> operatorów internetowych i komórkowych
           </p>
           
-          {/* Wyszukiwarka */}
-          <OperatorSearch operators={operatorsForSearch} />
+          {/* Wyszukiwarka miejscowości */}
+          <CitySearch />
+          <p className="text-blue-200 text-sm mt-3">
+            Sprawdź dostępnych operatorów w Twojej lokalizacji
+          </p>
           
           {/* Statystyki */}
           <div className="flex flex-wrap gap-3 mt-6">
@@ -156,18 +200,7 @@ export default async function OperatorsListPage() {
                     </div>
                     <div className="p-4">
                       <h3 className="font-bold text-gray-900 mb-2">{cleanOperatorName(operator.nazwa)}</h3>
-                      <div className="flex flex-wrap gap-1.5 text-xs">
-                        {stats.totalOffers > 0 && (
-                          <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">
-                            {stats.totalOffers} ofert
-                          </span>
-                        )}
-                        {stats.minPrice && stats.minPrice > 0 && (
-                          <span className="px-2 py-1 bg-green-50 text-green-700 rounded-full font-medium">
-                            od {stats.minPrice} zł
-                          </span>
-                        )}
-                      </div>
+                      <OfferStats stats={stats} />
                     </div>
                   </Link>
                 );
@@ -253,13 +286,7 @@ export default async function OperatorsListPage() {
                       {operator.regiony && operator.regiony.length > 0 && (
                         <p className="text-xs text-gray-500 mb-2">{operator.regiony.join(', ')}</p>
                       )}
-                      <div className="flex flex-wrap gap-1.5 text-xs">
-                        {stats.totalOffers > 0 && (
-                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full font-medium">
-                            {stats.totalOffers} ofert
-                          </span>
-                        )}
-                      </div>
+                      <OfferStats stats={stats} />
                     </div>
                   </Link>
                 );
@@ -297,8 +324,8 @@ export default async function OperatorsListPage() {
               konkurencyjne ceny i lepszą obsługę klienta niż duże firmy.
             </p>
             <p>
-              <strong>Wpisz swój adres w wyszukiwarce</strong> na stronie głównej, aby sprawdzić którzy 
-              operatorzy oferują usługi w Twojej lokalizacji.
+              <strong>Wpisz swoją miejscowość w wyszukiwarce</strong> powyżej, aby sprawdzić którzy 
+              operatorzy oferują usługi w Twojej lokalizacji i porównać ich oferty.
             </p>
           </div>
         </div>

@@ -348,6 +348,8 @@ model Operator {
   zasiegi         ZasiegOperatora[]
   opinie          Opinia[]
   coverage        OperatorCoverage[]  
+  artykuly        Artykul[]
+
   
   speedtests     OperatorSpeedtest[]
   priceHistory   OperatorPriceHistory[]
@@ -773,4 +775,150 @@ model UiConfig {
   updated_at  DateTime  @updatedAt
 
   @@map("ui_config")
+}
+
+// =====================================================
+// BLOG
+// =====================================================
+
+model KategoriaBlogu {
+  id        Int        @id @default(autoincrement())
+  nazwa     String     @db.VarChar(100)
+  slug      String     @unique @db.VarChar(100)
+  opis      String?
+  kolejnosc Int        @default(0)
+  created_at DateTime  @default(now())
+  
+  artykuly  Artykul[]
+  
+  @@map("kategorie_blogu")
+}
+
+model Tag {
+  id        Int      @id @default(autoincrement())
+  nazwa     String   @db.VarChar(100)
+  slug      String   @unique @db.VarChar(100)
+  typ       String?  @default("ogolny") @db.VarChar(50)
+  created_at DateTime @default(now())
+  
+  artykuly  ArtykulTag[]
+  
+  @@map("tagi")
+}
+
+model Artykul {
+  id              Int       @id @default(autoincrement())
+  
+  tytul           String    @db.VarChar(255)
+  slug            String    @db.VarChar(255)
+  zajawka         String?
+  tresc           String?
+  
+  kategoria_id    Int?
+  kategoria       KategoriaBlogu? @relation(fields: [kategoria_id], references: [id])
+  
+  operator_id     Int?
+  operator        Operator? @relation(fields: [operator_id], references: [id], onDelete: SetNull)
+  
+  miejscowosc_simc String?  @db.VarChar(20)
+  oferta_id       Int?
+  technologia     String?   @db.VarChar(50)
+  
+  thumbnail_url   String?   @db.VarChar(500)
+  og_image_url    String?   @db.VarChar(500)
+  
+  meta_title      String?   @db.VarChar(70)
+  meta_description String?  @db.VarChar(160)
+  
+  autor           String?   @default("Redakcja") @db.VarChar(100)
+  opublikowany    Boolean   @default(false)
+  wyrozniany      Boolean   @default(false)
+  data_publikacji DateTime?
+  
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  
+  tagi            ArtykulTag[]
+  
+  @@unique([kategoria_id, slug])
+  @@index([slug])
+  @@index([kategoria_id])
+  @@index([operator_id])
+  @@index([opublikowany])
+  @@map("artykuly")
+  metryki       ArtykulMetryki[]
+  wersje        ArtykulWersja[]
+  alerty        ArtykulAlert[]
+}
+
+model ArtykulTag {
+  artykul_id Int
+  tag_id     Int
+  
+  artykul    Artykul @relation(fields: [artykul_id], references: [id], onDelete: Cascade)
+  tag        Tag     @relation(fields: [tag_id], references: [id], onDelete: Cascade)
+  
+  @@id([artykul_id, tag_id])
+  @@map("artykul_tagi")
+}
+// =====================================================
+// SEO TRACKING & CONTENT VERSIONING
+// =====================================================
+
+model ArtykulMetryki {
+  id            Int      @id @default(autoincrement())
+  artykul_id    Int
+  artykul       Artykul  @relation(fields: [artykul_id], references: [id], onDelete: Cascade)
+  
+  url           String?  @db.VarChar(500)
+  clicks        Int      @default(0)
+  impressions   Int      @default(0)
+  ctr           Decimal? @db.Decimal(5, 2)
+  position      Decimal? @db.Decimal(5, 2)
+  
+  top_queries   Json?
+  
+  data_pomiaru  DateTime @db.Date
+  
+  created_at    DateTime @default(now())
+  
+  @@unique([artykul_id, data_pomiaru])
+  @@index([artykul_id])
+  @@index([data_pomiaru(sort: Desc)])
+  @@map("artykul_metryki")
+}
+
+model ArtykulWersja {
+  id            Int      @id @default(autoincrement())
+  artykul_id    Int
+  artykul       Artykul  @relation(fields: [artykul_id], references: [id], onDelete: Cascade)
+  
+  tytul         String?  @db.VarChar(255)
+  tresc         String?
+  zajawka       String?
+  
+  powod         String?  @db.VarChar(100)
+  dane_snapshot Json?
+  
+  created_at    DateTime @default(now())
+  
+  @@index([artykul_id])
+  @@map("artykul_wersje")
+}
+
+model ArtykulAlert {
+  id            Int       @id @default(autoincrement())
+  artykul_id    Int
+  artykul       Artykul   @relation(fields: [artykul_id], references: [id], onDelete: Cascade)
+  
+  typ           String    @db.VarChar(50)
+  wiadomosc     String?
+  
+  resolved      Boolean   @default(false)
+  resolved_at   DateTime?
+  
+  created_at    DateTime  @default(now())
+  
+  @@index([resolved])
+  @@map("artykul_alerty")
 }

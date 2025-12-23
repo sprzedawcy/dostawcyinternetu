@@ -9,7 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@prisma/client": "^6.19.1",
+    "@tailwindcss/typography": "^0.5.19",
     "bcrypt": "^6.0.0",
     "lucide-react": "^0.561.0",
     "next": "^15.5.9",
